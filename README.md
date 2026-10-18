@@ -20,6 +20,8 @@ sudo bash deploy/install.sh                      # HTTPS otomatis di <ip-vps>.ss
 sudo bash deploy/install.sh --domain algodesk.domainanda.com --email anda@email.com
 ```
 
+Bila VPS sudah menjalankan Traefik di Docker (misalnya template MT5 Hostinger), skrip otomatis mendaftarkan AlgoDesk ke Traefik dan tidak memasang Caddy. Paksa dengan `--proxy traefik` atau `--proxy caddy`.
+
 Skrip memasang Python, Caddy (sertifikat HTTPS otomatis), layanan systemd `algodesk`, dan backup database harian. Di akhir, skrip meminta kata sandi Super Admin dan mencetak `InpAgentId` serta `InpAgentSecret` untuk AlgoDeskAgent. Port 80 dan 443 harus terbuka.
 
 Update ke versi terbaru: `sudo bash deploy/update.sh` dari folder repo. Database dan pengaturan tetap aman.

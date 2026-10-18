@@ -3,6 +3,10 @@
 #
 #   sudo bash deploy/install.sh                       # HTTPS on <ip>.sslip.io
 #   sudo bash deploy/install.sh --domain algodesk.example.com --email you@example.com
+#   sudo bash deploy/install.sh --proxy traefik       # pakai Traefik (Docker) yang sudah ada
+#
+# --proxy auto (default) memakai Traefik bila container Traefik sedang berjalan,
+# selain itu memasang Caddy.
 #
 # Safe to re-run: it updates the app, keeps the database and settings.
 set -euo pipefail
@@ -16,11 +20,13 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 DOMAIN=""
 EMAIL=""
+PROXY="auto"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --domain) DOMAIN="$2"; shift 2 ;;
     --email)  EMAIL="$2"; shift 2 ;;
-    -h|--help) sed -n '2,8p' "$0"; exit 0 ;;
+    --proxy)  PROXY="$2"; shift 2 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "Opsi tidak dikenal: $1" >&2; exit 1 ;;
   esac
 done
@@ -40,11 +46,23 @@ if [[ -f "$ENV_FILE" ]]; then
   EMAIL="${EMAIL:-${ALGODESK_EMAIL:-}}"
 fi
 
+traefik_container() {
+  command -v docker >/dev/null || return 0
+  docker ps --format '{{.Names}} {{.Image}}' 2>/dev/null | awk '$2 ~ /(^|\/)traefik(:|$)/ {print $1; exit}'
+}
+TRAEFIK="$(traefik_container)"
+case "$PROXY" in
+  auto) [[ -n "$TRAEFIK" ]] && PROXY=traefik || PROXY=caddy ;;
+  traefik) [[ -n "$TRAEFIK" ]] || { echo "Container Traefik tidak ditemukan." >&2; exit 1; } ;;
+  caddy) ;;
+  *) echo "--proxy harus auto, caddy, atau traefik" >&2; exit 1 ;;
+esac
+
 say "Memasang paket sistem"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq python3 python3-venv curl gnupg debian-keyring debian-archive-keyring apt-transport-https >/dev/null
-if ! command -v caddy >/dev/null; then
+if [[ "$PROXY" == caddy ]] && ! command -v caddy >/dev/null; then
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
   apt-get update -qq
@@ -134,35 +152,71 @@ Persistent=true
 WantedBy=timers.target
 EOF
 
-say "Mengatur Caddy (HTTPS) untuk $DOMAIN"
-CADDYFILE=/etc/caddy/Caddyfile
-install -d -m 755 /etc/caddy
-if [[ -f "$CADDYFILE" ]] && ! grep -q '# managed by algodesk' "$CADDYFILE"; then
-  cp "$CADDYFILE" "$CADDYFILE.bak.$(date +%Y%m%d%H%M%S)"
-  warn "Caddyfile lama dicadangkan ke $CADDYFILE.bak.*"
-fi
-{
-  echo "# managed by algodesk: dibuat ulang setiap install.sh dijalankan"
-  [[ -n "$EMAIL" ]] && printf '{\n\temail %s\n}\n\n' "$EMAIL"
-  cat <<EOF
+systemctl daemon-reload
+systemctl enable --now algodesk.service algodesk-backup.timer >/dev/null
+systemctl restart algodesk.service
+
+if [[ "$PROXY" == traefik ]]; then
+  say "Mendaftarkan $DOMAIN ke Traefik ($TRAEFIK)"
+  # Traefik must share the host network so it can reach 127.0.0.1:$PORT.
+  [[ "$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$TRAEFIK")" == host ]] || {
+    echo "Traefik tidak memakai network_mode host; AlgoDesk di 127.0.0.1:$PORT tidak terjangkau olehnya." >&2
+    echo "Pakai --proxy caddy setelah Traefik dihentikan, atau hubungi pengembang." >&2
+    exit 1
+  }
+  read -r RESOLVER ENTRY < <(docker inspect "$TRAEFIK" --format '{{json .Args}}' | python3 -c '
+import json, re, sys
+resolver, entry = "", ""
+for a in json.load(sys.stdin) or []:
+    m = re.match(r"--certificatesresolvers\.([^.=]+)\.", a, re.I)
+    resolver = resolver or (m.group(1) if m else "")
+    m = re.match(r"--entrypoints\.([^.=]+)\.address=.*:443$", a, re.I)
+    entry = entry or (m.group(1) if m else "")
+print(resolver or "-", entry or "-")')
+  [[ "$RESOLVER" != "-" && "$ENTRY" != "-" ]] || {
+    echo "Pengaturan Traefik (certresolver/entrypoint :443) tidak terbaca dari argumen container." >&2
+    exit 1
+  }
+  # A placeholder container on the host network carries the routing labels;
+  # Traefik resolves host-network containers to 127.0.0.1.
+  docker rm -f algodesk-route >/dev/null 2>&1 || true
+  docker run -d --name algodesk-route --restart unless-stopped --network host \
+    -l traefik.enable=true \
+    -l "traefik.http.routers.algodesk.rule=Host(\`$DOMAIN\`)" \
+    -l "traefik.http.routers.algodesk.entrypoints=$ENTRY" \
+    -l "traefik.http.routers.algodesk.tls.certresolver=$RESOLVER" \
+    -l "traefik.http.services.algodesk.loadbalancer.server.port=$PORT" \
+    busybox:1.36 sleep infinity >/dev/null
+  if systemctl is-enabled caddy >/dev/null 2>&1; then
+    systemctl disable --now caddy >/dev/null 2>&1 || true
+    warn "Caddy dimatikan karena port 80/443 dipakai Traefik."
+  fi
+else
+  say "Mengatur Caddy (HTTPS) untuk $DOMAIN"
+  CADDYFILE=/etc/caddy/Caddyfile
+  install -d -m 755 /etc/caddy
+  if [[ -f "$CADDYFILE" ]] && ! grep -q '# managed by algodesk' "$CADDYFILE"; then
+    cp "$CADDYFILE" "$CADDYFILE.bak.$(date +%Y%m%d%H%M%S)"
+    warn "Caddyfile lama dicadangkan ke $CADDYFILE.bak.*"
+  fi
+  {
+    echo "# managed by algodesk: dibuat ulang setiap install.sh dijalankan"
+    [[ -n "$EMAIL" ]] && printf '{\n\temail %s\n}\n\n' "$EMAIL"
+    cat <<EOF
 $DOMAIN {
 	encode gzip
 	reverse_proxy 127.0.0.1:$PORT
 }
 EOF
-} > "$CADDYFILE"
-caddy validate --config "$CADDYFILE" --adapter caddyfile >/dev/null
-
-if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
-  ufw allow 80/tcp >/dev/null
-  ufw allow 443/tcp >/dev/null
+  } > "$CADDYFILE"
+  caddy validate --config "$CADDYFILE" --adapter caddyfile >/dev/null
+  if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
+    ufw allow 80/tcp >/dev/null
+    ufw allow 443/tcp >/dev/null
+  fi
+  systemctl enable caddy >/dev/null
+  systemctl reload-or-restart caddy
 fi
-
-systemctl daemon-reload
-systemctl enable --now algodesk.service algodesk-backup.timer >/dev/null
-systemctl restart algodesk.service
-systemctl enable caddy >/dev/null
-systemctl reload-or-restart caddy
 
 say "Menunggu server siap"
 for _ in $(seq 1 30); do
@@ -170,6 +224,13 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 curl -fsS "http://127.0.0.1:$PORT/healthz" >/dev/null || { journalctl -u algodesk -n 30 --no-pager; exit 1; }
+
+# End-to-end check through the HTTPS proxy (-k: the certificate may still be issuing).
+for _ in $(seq 1 20); do
+  curl -fsSk --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/healthz" >/dev/null 2>&1 && { PROXY_OK=1; break; }
+  sleep 2
+done
+[[ "${PROXY_OK:-}" == 1 ]] || warn "https://$DOMAIN belum menjawab lewat proxy $PROXY; periksa 'docker logs $TRAEFIK' atau 'journalctl -u caddy'."
 
 cli() { (cd "$PREFIX/app" && runuser -u "$APP_USER" -- env ALGODESK_DB="$DATA/algodesk.db" "$PREFIX/venv/bin/python" -m algodesk.cli "$@"); }
 count() { runuser -u "$APP_USER" -- "$PREFIX/venv/bin/python" -c "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute('select count(*) from $1').fetchone()[0])" "$DATA/algodesk.db"; }
