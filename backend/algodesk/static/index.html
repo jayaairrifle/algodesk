@@ -119,9 +119,9 @@ h1 { font-size: 30px; margin: 6px 0 4px; letter-spacing: -.02em; font-weight: 60
 .kpi { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 .kpi .lbl { display: flex; justify-content: space-between; color: var(--fg-2); }
 .kpi .lbl svg { width: 20px; height: 20px; color: var(--muted); }
-.kpi .val { font-family: var(--mono); font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kpi .val { font-family: var(--mono); font-size: clamp(18px, 1.7vw, 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; font-variant-numeric: tabular-nums; }
 .kpi .val small { font-size: 14px; color: var(--fg-2); margin-left: 6px; }
-.kpi .sub { color: var(--fg-2); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.kpi .sub { color: var(--fg-2); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 
 .row { display: grid; gap: 12px; }
 .r-mw { grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); }
@@ -367,13 +367,42 @@ body { margin: 0; }
   const ROLE_LABEL = { admin: 'Super Admin', trader: 'Trader', viewer: 'Viewer' };
   const CMD_LABEL = { pause_entry: 'Jeda entry', resume_entry: 'Lanjutkan entry', disable_magic: 'Nonaktifkan magic', enable_magic: 'Aktifkan magic', set_limit: 'Ubah batas rugi' };
   const STATUS_LABEL = { pending: 'Menunggu agent', acked: 'Dikonfirmasi agent', failed: 'Ditolak agent', expired: 'Kedaluwarsa' };
-  const S = { me: null, st: null, fetchedAt: 0, eq: [], eqHours: 24, cmds: [], users: [], view: 'overview', confirm: false, pending: null, prevBid: {}, dir: {}, timers: [] };
+  const S = { cur: null, me: null, st: null, fetchedAt: 0, eq: [], eqHours: 24, cmds: [], users: [], view: 'overview', confirm: false, pending: null, prevBid: {}, dir: {}, timers: [] };
 
   // ---------- helpers ----------
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const icon = id => `<svg><use href="#${id}"/></svg>`;
-  const fmtUsd = (v, sign) => v == null ? '–' : (v < 0 ? '−' : sign && v > 0 ? '+' : '') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // ---------- currency ----------
+  // Amounts arrive in the account currency (USD, USC/USDc cent accounts, IDR) and are shown in the
+  // currency the viewer picks. USD/IDR comes from the broker's USDIDR symbol when it has one,
+  // otherwise from the rate the viewer enters in Pengaturan. Both choices stay in this browser only.
+  const pref = { get: k => { try { return localStorage.getItem('algodesk.' + k); } catch { return null; } },
+                 set: (k, v) => { try { localStorage.setItem('algodesk.' + k, v); } catch {} } };
+  const CURS = ['USD', 'USC', 'IDR'];
+  S.cur = pref.get('cur');
+  const normCur = c => { c = String(c || 'USD').toUpperCase(); return c.startsWith('USC') || c === 'USDC' ? 'USC' : c; };
+  const brokerIdr = () => tel()?.fx?.usd_idr || 0;
+  const manualIdr = () => parseFloat(pref.get('usdIdr')) || 0;
+  const idrRate = () => brokerIdr() || manualIdr();
+  const usdPer = c => c === 'USD' ? 1 : c === 'USC' ? 0.01 : c === 'IDR' && idrRate() ? 1 / idrRate() : null;
+  const acctCur = () => normCur(tel()?.account?.currency);
+  // The picked currency, or the account currency when conversion is impossible (IDR without a rate).
+  const viewCur = () => { const c = S.cur || acctCur(); return usdPer(c) && usdPer(acctCur()) ? c : acctCur(); };
+  const conv = v => { const from = usdPer(acctCur()), to = usdPer(viewCur()); return from && to ? v * from / to : v; };
+  const fmtUsd = (v, sign) => {
+    if (v == null) return '–';
+    const cur = viewCur(), x = conv(v), dec = cur === 'IDR' ? 0 : 2;
+    const n = Math.abs(x).toLocaleString(cur === 'IDR' ? 'id-ID' : 'en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    return (x < 0 ? '−' : sign && x > 0 ? '+' : '') + (cur === 'USD' ? '$' + n : cur === 'IDR' ? 'Rp\u00a0' + n : n + '\u00a0' + cur);
+  };
+  // Short axis labels: $10.25k, Rp 168,4 jt, 1.02M USC.
+  const fmtAxis = v => {
+    const cur = viewCur(), x = conv(v);
+    if (cur === 'IDR') return 'Rp ' + (x >= 1e9 ? (x / 1e9).toFixed(2) + ' M' : (x / 1e6).toFixed(1) + ' jt');
+    const k = x >= 1e6 ? (x / 1e6).toFixed(2) + 'M' : (x / 1e3).toFixed(2) + 'k';
+    return cur === 'USD' ? '$' + k : k + ' ' + cur;
+  };
   const fmtPx = (v, d) => v == null ? '–' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const hhmm = ts => new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   const hms = ts => new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -516,7 +545,7 @@ body { margin: 0; }
           <path d="${line}L${x(last[0])},${H}L0,${H}Z" fill="url(#eqg)"/>
           <path d="${line}" fill="none" stroke="var(--blue)" stroke-width="2" vector-effect="non-scaling-stroke"/>
         </svg>
-        ${ticks.map(v => `<span class="yl" style="top:${(y(v) / H * 100).toFixed(2)}%">$${(v / 1000).toFixed(2)}k</span>`).join('')}
+        ${ticks.map(v => `<span class="yl" style="top:${(y(v) / H * 100).toFixed(2)}%">${fmtAxis(v)}</span>`).join('')}
         <span class="endpt" style="left:${(x(last[0]) / W * 100).toFixed(2)}%;top:${(y(last[1]) / H * 100).toFixed(2)}%" title="${fmtUsd(last[1])}"></span>
       </div>
       <div class="xl">${xl.map(l => `<span>${l}</span>`).join('')}<span>SEKARANG</span></div>
@@ -538,11 +567,17 @@ body { margin: 0; }
 
   function kpis() {
     const t = tel(); if (!t) return '';
-    const a = t.account, p = t.protection || {}, pl = p.baseline ? a.equity - p.baseline : null;
+    // Today's P/L as MT5 shows it: closed deals since the day start plus open positions.
+    // Older agents send no "pl"; fall back to the equity change since the baseline.
+    const a = t.account, p = t.protection || {}, d = t.pl;
+    const pl = d ? d.realized + d.floating : p.baseline ? a.equity - p.baseline : null;
+    const plSub = d
+      ? `<span>Tertutup <span class="num ${d.realized < 0 ? 'down' : 'up'}">${fmtUsd(d.realized, true)}</span></span><span>Berjalan <span class="num ${d.floating < 0 ? 'down' : 'up'}">${fmtUsd(d.floating, true)}</span></span>`
+      : `<span class="num ${pl < 0 ? 'down' : 'up'}">${pl == null ? '–' : (pl / p.baseline * 100).toFixed(2) + '%'}</span> dari equity awal hari`;
     const magics = new Set((t.positions || []).map(x => x.magic)).size;
     return `<div class="kpis">
       <div class="card kpi"><div class="lbl">Equity akun ${icon('i-wallet')}</div><div class="val">${fmtUsd(a.equity)}</div><div class="sub"><span class="dot b"></span>Balance <span class="num">${fmtUsd(a.balance)}</span></div></div>
-      <div class="card kpi"><div class="lbl">P/L hari ini ${icon(pl < 0 ? 'i-down' : 'i-up')}</div><div class="val ${pl < 0 ? 'down' : 'up'}">${fmtUsd(pl, true)}</div><div class="sub"><span class="num ${pl < 0 ? 'down' : 'up'}">${pl == null ? '–' : (pl / p.baseline * 100).toFixed(2) + '%'}</span> dari equity awal hari</div></div>
+      <div class="card kpi"><div class="lbl">P/L hari ini ${icon(pl < 0 ? 'i-down' : 'i-up')}</div><div class="val ${pl < 0 ? 'down' : 'up'}">${fmtUsd(pl, true)}</div><div class="sub">${plSub}</div></div>
       <div class="card kpi"><div class="lbl">Margin bebas ${icon('i-coin')}</div><div class="val">${fmtUsd(a.free_margin)}</div><div class="sub"><span class="dot g"></span>Margin level <span class="num">${a.margin_level ? a.margin_level.toFixed(1) + '%' : '–'}</span></div></div>
       <div class="card kpi"><div class="lbl">Posisi terbuka ${icon('i-layers')}</div><div class="val">${String((t.positions || []).length).padStart(2, '0')}<small>posisi</small></div><div class="sub"><span class="dot g"></span>${magics} Magic Number terpantau</div></div>
     </div>`;
@@ -577,7 +612,8 @@ body { margin: 0; }
   function head() {
     const [eb, h, p] = HEADS[S.view];
     return `<div class="head"><div><div class="eyebrow">${eb}</div><h1>${h}</h1><p>${p}</p></div>
-      <div class="preview"><span class="mono" style="display:flex;gap:6px;align-items:center">${icon('i-clock')}<span id="clock">${new Date().toLocaleTimeString('id-ID')}</span></span></div></div>`;
+      <div class="preview"><select id="curSel" aria-label="Mata uang tampilan">${CURS.map(c => `<option value="${c}" ${c === viewCur() ? 'selected' : ''} ${usdPer(c) && usdPer(acctCur()) ? '' : 'disabled'}>${c}${c === 'IDR' && !idrRate() ? ' (atur kurs)' : ''}</option>`).join('')}</select>
+        <span class="mono" style="display:flex;gap:6px;align-items:center">${icon('i-clock')}<span id="clock">${new Date().toLocaleTimeString('id-ID')}</span></span></div></div>`;
   }
 
   function eaManage() {
@@ -626,6 +662,11 @@ body { margin: 0; }
         <label>Batas rugi harian (% dari equity awal)<input id="limIn" type="number" min="0.5" max="20" step="0.1" value="${p?.limit_pct ?? 3}" ${can('admin') ? '' : 'disabled'}></label>
         <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${can('admin') && !S.pending ? '' : 'disabled'}>Kirim ke agent</button></div>
       </form>${can('admin') ? '' : '<div class="pf">Hanya Super Admin yang dapat mengubah batas rugi.</div>'}</section>
+      <section class="card"><div class="ph"><div><h2><span class="dot g"></span>Mata uang tampilan</h2><p>Akun dalam ${esc(acctCur())}. USC = USD ÷ 100. Kurs USD/IDR ${brokerIdr() ? 'diambil otomatis dari simbol USDIDR broker: ' + brokerIdr().toLocaleString('id-ID') : 'tidak tersedia di broker, isi manual di bawah'}.</p></div></div>
+      <form id="fxForm" class="fgrid">
+        <label>Kurs manual 1 USD = … IDR<input id="fxIn" type="number" min="1000" max="100000" step="1" value="${manualIdr() || ''}" placeholder="mis. kurs hari ini" ${brokerIdr() ? 'disabled' : ''}></label>
+        <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${brokerIdr() ? 'disabled' : ''}>Simpan kurs</button></div>
+      </form><div class="pf">Pilihan mata uang dan kurs manual tersimpan di browser ini saja.</div></section>
       <section class="card"><div class="ph"><div><h2><span class="dot b"></span>Log perintah</h2><p>Setiap perintah dicatat dengan pengirim, peran, dan konfirmasi agent</p></div></div>
       ${S.cmds.length ? `<div class="tw"><table class="log"><thead><tr><th>Waktu</th><th>Pengguna</th><th>Perintah</th><th>Status</th><th>Hasil</th></tr></thead><tbody>
       ${S.cmds.map(c => `<tr><td>${hms(c.issued_at)}</td><td>${esc(c.issued_by)} <span class="muted">(${ROLE_LABEL[c.issued_role] || '–'})</span></td>
@@ -640,7 +681,7 @@ body { margin: 0; }
       case 'overview': return acctBar() + kpis()
         + `<div class="row r-mw">${marketCard(false)}${protCard()}</div>`
         + `<div class="row r-pos">${posCard()}${eaCard()}</div>`
-        + `<div class="row r-pos">${chartCard('Equity hari ini', 'Perubahan intrahari · ' + esc(tel().account.currency) + ' · 24 jam')}${agentCard()}</div>`;
+        + `<div class="row r-pos">${chartCard('Equity hari ini', 'Perubahan intrahari · ' + viewCur() + ' · 24 jam')}${agentCard()}</div>`;
       case 'market': return marketCard(true);
       case 'positions': return kpis() + posCard();
       case 'eas': return eaManage() + protCard();
@@ -756,12 +797,14 @@ body { margin: 0; }
   });
   document.addEventListener('change', async e => {
     const r = e.target.closest('[data-urole]');
+    if (e.target.id === 'curSel') { S.cur = e.target.value; pref.set('cur', S.cur); e.target.blur(); render(); return; }
     if (r) { try { await api('/users/' + r.dataset.urole, { method: 'PATCH', body: { role: r.value } }); await loadUsers(); toast('Peran diperbarui. Pengguna perlu login ulang.'); } catch (err) { toast(err.message, 'err'); } r.blur(); render(); }
   });
   document.addEventListener('submit', async e => {
     const f = e.target; if (f.id === 'loginForm') return;
     e.preventDefault();
     try {
+      if (f.id === 'fxForm') { const v = parseFloat($('fxIn').value); if (!(v >= 1000)) throw new Error('Kurs tidak valid'); pref.set('usdIdr', String(v)); $('fxIn').blur(); toast('Kurs disimpan'); render(); return; }
       if (f.id === 'limitForm') { const v = parseFloat($('limIn').value); $('limIn').blur(); await sendCommand({ type: 'set_limit', value: v }, `Ubah batas rugi ke ${v}%`); await loadCmds(); }
       else if (f.id === 'eaAdd') { await api('/eas/' + $('eaAddMagic').value, { method: 'PUT', body: { name: $('eaAddName').value, scope: '' } }); toast('EA didaftarkan.'); }
       else if (f.dataset.eaform) { const m = f.dataset.eaform; await api('/eas/' + m, { method: 'PUT', body: { name: $('ean-' + m).value, scope: $('eas-' + m).value } }); toast('Nama EA disimpan.'); }

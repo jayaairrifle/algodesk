@@ -48,7 +48,7 @@ input double InpRsiBuy            = 55.0;   // RSI minimal untuk sinyal BUY (den
 input double InpRsiSell           = 45.0;   // RSI maksimal untuk sinyal SELL (dengan struktur LH/LL)
 input int    InpMaxSymbols        = 20;
 
-#define AGENT_VERSION "0.10"
+#define AGENT_VERSION "0.11"
 
 CTrade   g_trade;
 long     g_watch[];
@@ -91,6 +91,40 @@ double Baseline()   { return AD_Get("BASE", 0.0); }
 double LimitPct()   { return AD_Get("LIMIT_PCT", InpLossLimitPct); }
 double LossLimit()  { return Baseline() * LimitPct() / 100.0; }
 double LossUsed()   { return MathMax(0.0, Baseline() - AccountInfoDouble(ACCOUNT_EQUITY)); }
+
+// Closed-trade result since the start of the trading day, as in the MT5 History tab:
+// profit + swap + commission + fee of buy/sell deals. Deposits and withdrawals are excluded.
+double RealizedToday(int &deals)
+  {
+   deals = 0;
+   double sum = 0.0;
+   if(!HistorySelect(CurrentDayStart(), TimeTradeServer() + 60))
+      return 0.0;
+   for(int i = 0; i < HistoryDealsTotal(); i++)
+     {
+      ulong t = HistoryDealGetTicket(i);
+      if(t == 0)
+         continue;
+      long type = HistoryDealGetInteger(t, DEAL_TYPE);
+      if(type != DEAL_TYPE_BUY && type != DEAL_TYPE_SELL)
+         continue;
+      sum += HistoryDealGetDouble(t, DEAL_PROFIT) + HistoryDealGetDouble(t, DEAL_SWAP)
+             + HistoryDealGetDouble(t, DEAL_COMMISSION) + HistoryDealGetDouble(t, DEAL_FEE);
+      if(HistoryDealGetInteger(t, DEAL_ENTRY) != DEAL_ENTRY_IN)
+         deals++;
+     }
+   return sum;
+  }
+
+// Open-position result, as the Profit column total in the MT5 Trade tab (profit + swap).
+double FloatingPl()
+  {
+   double sum = 0.0;
+   for(int i = 0; i < PositionsTotal(); i++)
+      if(PositionGetTicket(i) != 0)
+         sum += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+   return sum;
+  }
 
 string EntryStateText()
   {
@@ -216,6 +250,22 @@ void BuildSymbols()
       g_rsi[i]  = iRSI(g_syms[i], InpSignalTf, InpRsiPeriod, PRICE_CLOSE);
       g_atr[i]  = iATR(g_syms[i], InpSignalTf, InpAtrPeriod);
      }
+  }
+
+// USD/IDR rate from the broker, for the dashboard's currency conversion.
+// Uses the first symbol named like USDIDR (suffixes such as USDIDR.m are fine); 0 when the broker has none.
+double UsdIdrRate()
+  {
+   for(int i = 0; i < SymbolsTotal(false); i++)
+     {
+      string name = SymbolName(i, false);
+      if(StringFind(name, "USDIDR") != 0)
+         continue;
+      double bid = SymbolInfoDouble(name, SYMBOL_BID);
+      if(bid > 0.0)
+         return bid;
+     }
+   return 0.0;
   }
 
 double LastValue(const int handle)
@@ -523,6 +573,8 @@ string DisabledMagicsJson()
 void SendTelemetry()
   {
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   int closedDeals = 0;
+   double realized = RealizedToday(closedDeals);
    string body = "{" +
       "\"agent_id\":" + J(InpAgentId)
       + ",\"agent_version\":" + J(AGENT_VERSION)
@@ -550,6 +602,12 @@ void SendTelemetry()
          + ",\"entry_state\":" + J(EntryStateText())
          + ",\"disabled_magics\":" + DisabledMagicsJson()
       + "}"
+      + ",\"pl\":{" +
+         "\"realized\":" + N(realized)
+         + ",\"floating\":" + N(FloatingPl())
+         + ",\"closed_deals\":" + IntegerToString(closedDeals)
+      + "}"
+      + ",\"fx\":{\"usd_idr\":" + N(UsdIdrRate(), 2) + "}"
       + ",\"positions\":" + PositionsJson()
       + ",\"symbols\":" + SymbolsJson()
       + ",\"timeframe\":" + J(StringSubstr(EnumToString(InpSignalTf), 7))

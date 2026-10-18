@@ -30,10 +30,12 @@ SYMBOLS = [
 
 
 class Sim:
-    def __init__(self, loss_drift: float):
+    def __init__(self, loss_drift: float, usd_idr: float = 0.0):
+        self.usd_idr = usd_idr
         self.symbols = [dict(zip(("symbol", "bid", "digits", "point", "spread", "rsi", "atr", "structure"), s)) for s in SYMBOLS]
         self.balance = 10246.38
         self.baseline = 10246.38
+        self.day_balance = self.balance
         self.day_start = int(time.time()) // 86400 * 86400
         self.limit_pct = 3.0
         self.paused = False
@@ -91,6 +93,8 @@ class Sim:
                            "limit_amount": round(self.baseline * self.limit_pct / 100, 2),
                            "loss_used": round(max(0.0, self.baseline - eq), 2), "entry_state": self.entry_state(),
                            "disabled_magics": sorted(self.disabled)},
+            "pl": {"realized": round(self.balance - self.day_balance, 2), "floating": round(eq - self.balance, 2), "closed_deals": 0},
+            "fx": {"usd_idr": self.usd_idr},
             "positions": [{k: v for k, v in p.items() if k != "contract"}
                           | {"profit": self.profit(p), "digits": self.sym(p["symbol"])["digits"]} for p in self.positions],
             "symbols": [{"symbol": s["symbol"], "digits": s["digits"], "bid": round(s["bid"], s["digits"]),
@@ -142,9 +146,10 @@ def main():
     ap.add_argument("--secret", required=True)
     ap.add_argument("--interval", type=float, default=2.0)
     ap.add_argument("--loss-drift", type=float, default=0.0, help="USD rugi per langkah, untuk menguji proteksi")
+    ap.add_argument("--usd-idr", type=float, default=0.0, help="kurs USDIDR broker; 0 = broker tidak punya simbol USDIDR")
     args = ap.parse_args()
 
-    sim = Sim(args.loss_drift)
+    sim = Sim(args.loss_drift, args.usd_idr)
     print(f"Agent tiruan {args.agent} mengirim ke {args.url} (Ctrl+C untuk berhenti)")
     while True:
         try:
