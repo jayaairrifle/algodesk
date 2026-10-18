@@ -1,0 +1,420 @@
+"""AlgoDesk backend: receives signed telemetry from AlgoDeskAgent.mq5, queues
+dashboard commands for it, and serves the dashboard with session login + RBAC."""
+
+import json
+import os
+import secrets
+import threading
+import time
+from pathlib import Path
+from typing import Literal
+
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
+
+from .db import DB
+from .security import hash_password, new_token, sign, token_hash, verify_password
+
+API = "/api"
+COOKIE = "algodesk_session"
+SESSION_TTL = 12 * 3600
+SIGNATURE_SKEW = 30           # seconds of clock difference accepted from the agent
+COMMAND_TTL = 120             # unacknowledged commands expire after this many seconds
+OFFLINE_AFTER = 15            # agent shown offline when telemetry is older than this
+SAMPLE_EVERY = 30             # equity chart resolution in seconds
+SAMPLE_KEEP = 8 * 86400
+MAX_BODY = 512 * 1024
+LOGIN_MAX_FAILS = 5
+LOGIN_LOCK = 300
+
+ROLES = ("admin", "trader", "viewer")
+COMMAND_ROLES = {
+    "pause_entry": ("admin", "trader"),
+    "resume_entry": ("admin", "trader"),
+    "disable_magic": ("admin", "trader"),
+    "enable_magic": ("admin", "trader"),
+    "set_limit": ("admin",),
+}
+STATIC = Path(__file__).parent / "static"
+
+
+class LoginIn(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=256)
+
+
+class CommandIn(BaseModel):
+    type: Literal["pause_entry", "resume_entry", "disable_magic", "enable_magic", "set_limit"]
+    magic: int | None = None
+    value: float | None = None
+    agent_id: str | None = None
+
+
+class UserIn(BaseModel):
+    username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")
+    display_name: str = Field(min_length=1, max_length=80)
+    role: Literal["admin", "trader", "viewer"]
+    password: str = Field(min_length=10, max_length=256)
+
+
+class UserPatch(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=80)
+    role: Literal["admin", "trader", "viewer"] | None = None
+    active: bool | None = None
+    password: str | None = Field(default=None, min_length=10, max_length=256)
+
+
+class EaIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    scope: str = Field(default="", max_length=120)
+
+
+def user_out(row) -> dict:
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "display_name": row["display_name"],
+        "role": row["role"],
+        "active": bool(row["active"]),
+        "last_login": row["last_login"],
+    }
+
+
+def create_app(db_path: str | None = None, cookie_secure: bool | None = None) -> FastAPI:
+    db = DB(db_path or os.environ.get("ALGODESK_DB", "algodesk.db"))
+    if cookie_secure is None:
+        cookie_secure = os.environ.get("ALGODESK_COOKIE_SECURE", "1") != "0"
+
+    app = FastAPI(title="AlgoDesk", docs_url=None, redoc_url=None, openapi_url=None)
+    app.state.db = db
+
+    seen_signatures: dict[str, float] = {}
+    login_fails: dict[str, list[float]] = {}
+    guard = threading.Lock()
+
+    # ------------------------------------------------------------------ middleware
+    @app.middleware("http")
+    async def protect(request: Request, call_next):
+        path = request.url.path
+        # Browser writes must be JSON: a cross-site form cannot send that without CORS preflight.
+        if (
+            path.startswith(API + "/")
+            and not path.startswith(API + "/agent/")
+            and request.method in ("POST", "PUT", "PATCH", "DELETE")
+            and not request.headers.get("content-type", "").startswith("application/json")
+        ):
+            return JSONResponse({"detail": "Content-Type harus application/json"}, status_code=415)
+        if int(request.headers.get("content-length") or 0) > MAX_BODY:
+            return JSONResponse({"detail": "Body terlalu besar"}, status_code=413)
+        response = await call_next(request)
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'"
+        )
+        return response
+
+    # ------------------------------------------------------------------ agent auth
+    async def agent_auth(request: Request) -> tuple[str, dict | None]:
+        agent_id = request.headers.get("x-algodesk-agent", "")
+        ts = request.headers.get("x-algodesk-timestamp", "")
+        sig = request.headers.get("x-algodesk-signature", "")
+        if not (agent_id and ts and sig):
+            raise HTTPException(401, "Header tanda tangan agent tidak lengkap")
+        row = db.one("SELECT secret FROM agents WHERE agent_id = ? AND active = 1", (agent_id,))
+        if row is None:
+            raise HTTPException(401, "Agent tidak dikenal")
+        try:
+            ts_int = int(ts)
+        except ValueError:
+            raise HTTPException(401, "Timestamp tidak valid")
+        now = time.time()
+        if abs(now - ts_int) > SIGNATURE_SKEW:
+            raise HTTPException(401, "Timestamp di luar toleransi; periksa jam VPS")
+        raw = await request.body()
+        try:
+            body = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise HTTPException(400, "Body bukan UTF-8")
+        path = request.url.path[len(API):] if request.url.path.startswith(API) else request.url.path
+        expected = sign(row["secret"], ts, request.method, path, body)
+        if not secrets.compare_digest(expected, sig.lower()):
+            raise HTTPException(401, "Tanda tangan tidak cocok")
+        # GET /agent/commands is a harmless read and may legitimately repeat within a second.
+        if request.method != "GET":
+            with guard:
+                for k, t in list(seen_signatures.items()):
+                    if now - t > SIGNATURE_SKEW * 2:
+                        del seen_signatures[k]
+                if sig in seen_signatures:
+                    raise HTTPException(401, "Request diputar ulang")
+                seen_signatures[sig] = now
+        db.run("UPDATE agents SET last_seen = ? WHERE agent_id = ?", (now, agent_id))
+        payload = None
+        if body:
+            try:
+                payload = json.loads(body)
+            except json.JSONDecodeError:
+                raise HTTPException(400, "Body bukan JSON")
+        return agent_id, payload
+
+    # ------------------------------------------------------------------ user auth
+    def current_user(request: Request):
+        token = request.cookies.get(COOKIE)
+        if not token:
+            raise HTTPException(401, "Belum login")
+        row = db.one(
+            "SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id "
+            "WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1",
+            (token_hash(token), time.time()),
+        )
+        if row is None:
+            raise HTTPException(401, "Sesi berakhir, silakan login lagi")
+        return row
+
+    def require(*roles: str):
+        def dep(user=Depends(current_user)):
+            if user["role"] not in roles:
+                raise HTTPException(403, "Peran Anda tidak memiliki akses untuk tindakan ini")
+            return user
+        return dep
+
+    def pick_agent(agent_id: str | None) -> str | None:
+        if agent_id:
+            row = db.one("SELECT agent_id FROM agents WHERE agent_id = ?", (agent_id,))
+        else:
+            row = db.one("SELECT agent_id FROM agents WHERE active = 1 ORDER BY last_seen DESC NULLS LAST, created_at LIMIT 1")
+        return row["agent_id"] if row else None
+
+    # ------------------------------------------------------------------ agent endpoints
+    @app.post(API + "/agent/telemetry")
+    def agent_telemetry(auth=Depends(agent_auth)):
+        agent_id, payload = auth
+        if not isinstance(payload, dict):
+            raise HTTPException(422, "Telemetri harus berupa objek JSON")
+        account = payload.get("account") or {}
+        equity, balance = account.get("equity"), account.get("balance")
+        if not isinstance(equity, (int, float)) or not isinstance(balance, (int, float)):
+            raise HTTPException(422, "account.equity dan account.balance wajib berupa angka")
+        now = time.time()
+        db.run(
+            "INSERT INTO telemetry_latest (agent_id, received_at, payload) VALUES (?, ?, ?) "
+            "ON CONFLICT(agent_id) DO UPDATE SET received_at = excluded.received_at, payload = excluded.payload",
+            (agent_id, now, json.dumps(payload)),
+        )
+        last = db.one("SELECT MAX(ts) AS ts FROM equity_samples WHERE agent_id = ?", (agent_id,))
+        if last["ts"] is None or now - last["ts"] >= SAMPLE_EVERY:
+            db.run("INSERT INTO equity_samples (agent_id, ts, equity, balance) VALUES (?, ?, ?, ?)", (agent_id, now, equity, balance))
+            db.run("DELETE FROM equity_samples WHERE ts < ?", (now - SAMPLE_KEEP,))
+        return {"ok": True}
+
+    @app.get(API + "/agent/commands")
+    def agent_commands(auth=Depends(agent_auth)):
+        agent_id, _ = auth
+        now = time.time()
+        db.run(
+            "UPDATE commands SET status = 'expired' WHERE agent_id = ? AND status = 'pending' AND issued_at < ?",
+            (agent_id, now - COMMAND_TTL),
+        )
+        rows = db.all(
+            "SELECT c.id, c.type, c.magic, c.value, u.display_name AS issued_by FROM commands c "
+            "LEFT JOIN users u ON u.id = c.issued_by WHERE c.agent_id = ? AND c.status = 'pending' ORDER BY c.issued_at",
+            (agent_id,),
+        )
+        for r in rows:
+            db.run("UPDATE commands SET delivered_at = COALESCE(delivered_at, ?) WHERE id = ?", (now, r["id"]))
+        return {"commands": [dict(r) for r in rows]}
+
+    @app.post(API + "/agent/commands/ack")
+    def agent_ack(auth=Depends(agent_auth)):
+        agent_id, payload = auth
+        if not isinstance(payload, dict) or not isinstance(payload.get("id"), str):
+            raise HTTPException(422, "id wajib diisi")
+        row = db.one("SELECT status FROM commands WHERE id = ? AND agent_id = ?", (payload["id"], agent_id))
+        if row is None:
+            raise HTTPException(404, "Perintah tidak ditemukan")
+        # A late ack after expiry still records what the terminal actually did.
+        if row["status"] in ("pending", "expired"):
+            db.run(
+                "UPDATE commands SET status = ?, acked_at = ?, result = ?, entry_state = ? WHERE id = ?",
+                (
+                    "acked" if payload.get("ok") else "failed",
+                    time.time(),
+                    str(payload.get("message", ""))[:300],
+                    str(payload.get("entry_state", ""))[:20],
+                    payload["id"],
+                ),
+            )
+        return {"ok": True}
+
+    # ------------------------------------------------------------------ auth endpoints
+    @app.post(API + "/auth/login")
+    def login(body: LoginIn, response: Response):
+        key = body.username.lower()
+        now = time.time()
+        with guard:
+            fails = [t for t in login_fails.get(key, []) if now - t < LOGIN_LOCK]
+            login_fails[key] = fails
+            if len(fails) >= LOGIN_MAX_FAILS:
+                raise HTTPException(429, "Terlalu banyak percobaan gagal. Coba lagi dalam 5 menit.")
+        row = db.one("SELECT * FROM users WHERE username = ? AND active = 1", (body.username,))
+        if row is None or not verify_password(body.password, row["pw_hash"]):
+            with guard:
+                login_fails.setdefault(key, []).append(now)
+            raise HTTPException(401, "Nama pengguna atau kata sandi salah")
+        with guard:
+            login_fails.pop(key, None)
+        token = new_token()
+        db.run("DELETE FROM sessions WHERE expires_at < ?", (now,))
+        db.run("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)", (token_hash(token), row["id"], now + SESSION_TTL))
+        db.run("UPDATE users SET last_login = ? WHERE id = ?", (now, row["id"]))
+        response.set_cookie(COOKIE, token, max_age=SESSION_TTL, httponly=True, samesite="strict", secure=cookie_secure, path="/")
+        return user_out(row)
+
+    @app.post(API + "/auth/logout")
+    def logout(request: Request, response: Response):
+        token = request.cookies.get(COOKIE)
+        if token:
+            db.run("DELETE FROM sessions WHERE token_hash = ?", (token_hash(token),))
+        response.delete_cookie(COOKIE, path="/")
+        return {"ok": True}
+
+    @app.get(API + "/auth/me")
+    def me(user=Depends(current_user)):
+        return user_out(user)
+
+    # ------------------------------------------------------------------ dashboard data
+    @app.get(API + "/state")
+    def state(agent_id: str | None = None, user=Depends(current_user)):
+        now = time.time()
+        agents = [dict(r) for r in db.all("SELECT agent_id, last_seen FROM agents WHERE active = 1 ORDER BY agent_id")]
+        chosen = pick_agent(agent_id)
+        tel = db.one("SELECT received_at, payload FROM telemetry_latest WHERE agent_id = ?", (chosen,)) if chosen else None
+        eas = [dict(r) for r in db.all("SELECT magic, name, scope FROM eas ORDER BY magic")]
+        return {
+            "server_time": now,
+            "agents": agents,
+            "agent": None if chosen is None else {
+                "agent_id": chosen,
+                "received_at": tel["received_at"] if tel else None,
+                "age": (now - tel["received_at"]) if tel else None,
+                "online": bool(tel and now - tel["received_at"] <= OFFLINE_AFTER),
+            },
+            "telemetry": json.loads(tel["payload"]) if tel else None,
+            "eas": eas,
+        }
+
+    @app.get(API + "/equity")
+    def equity(hours: float = 24, agent_id: str | None = None, user=Depends(current_user)):
+        chosen = pick_agent(agent_id)
+        if chosen is None:
+            return {"samples": []}
+        since = time.time() - max(1.0, min(hours, 192.0)) * 3600
+        rows = db.all("SELECT ts, equity, balance FROM equity_samples WHERE agent_id = ? AND ts >= ? ORDER BY ts", (chosen, since))
+        return {"samples": [dict(r) for r in rows]}
+
+    # ------------------------------------------------------------------ commands
+    @app.post(API + "/commands")
+    def create_command(body: CommandIn, user=Depends(current_user)):
+        if user["role"] not in COMMAND_ROLES[body.type]:
+            raise HTTPException(403, "Peran Anda tidak boleh mengirim perintah ini")
+        if body.type in ("disable_magic", "enable_magic") and (body.magic is None or body.magic <= 0):
+            raise HTTPException(422, "Magic number wajib diisi")
+        if body.type == "set_limit" and (body.value is None or not 0.5 <= body.value <= 20):
+            raise HTTPException(422, "Batas rugi harus antara 0,5% dan 20%")
+        chosen = pick_agent(body.agent_id)
+        if chosen is None:
+            raise HTTPException(404, "Belum ada agent terdaftar")
+        cid = "cmd_" + secrets.token_hex(8)
+        db.run(
+            "INSERT INTO commands (id, agent_id, type, magic, value, issued_by, issued_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (cid, chosen, body.type, body.magic, body.value, user["id"], time.time()),
+        )
+        return {"id": cid, "status": "pending"}
+
+    def command_rows(where: str, args: tuple, limit: int = 1):
+        return db.all(
+            "SELECT c.id, c.agent_id, c.type, c.magic, c.value, c.issued_at, c.status, c.delivered_at, c.acked_at, "
+            "c.result, c.entry_state, u.display_name AS issued_by, u.role AS issued_role FROM commands c "
+            f"LEFT JOIN users u ON u.id = c.issued_by WHERE {where} ORDER BY c.issued_at DESC LIMIT ?",
+            args + (limit,),
+        )
+
+    @app.get(API + "/commands")
+    def list_commands(limit: int = 50, user=Depends(current_user)):
+        db.run("UPDATE commands SET status = 'expired' WHERE status = 'pending' AND issued_at < ?", (time.time() - COMMAND_TTL,))
+        return {"commands": [dict(r) for r in command_rows("1 = 1", (), max(1, min(limit, 500)))]}
+
+    @app.get(API + "/commands/{cid}")
+    def get_command(cid: str, user=Depends(current_user)):
+        db.run("UPDATE commands SET status = 'expired' WHERE id = ? AND status = 'pending' AND issued_at < ?", (cid, time.time() - COMMAND_TTL))
+        rows = command_rows("c.id = ?", (cid,))
+        if not rows:
+            raise HTTPException(404, "Perintah tidak ditemukan")
+        return dict(rows[0])
+
+    # ------------------------------------------------------------------ EA registry
+    @app.put(API + "/eas/{magic}")
+    def put_ea(magic: int, body: EaIn, user=Depends(require("admin"))):
+        if magic <= 0:
+            raise HTTPException(422, "Magic number harus positif")
+        db.run(
+            "INSERT INTO eas (magic, name, scope) VALUES (?, ?, ?) ON CONFLICT(magic) DO UPDATE SET name = excluded.name, scope = excluded.scope",
+            (magic, body.name, body.scope),
+        )
+        return {"magic": magic, "name": body.name, "scope": body.scope}
+
+    @app.delete(API + "/eas/{magic}")
+    def delete_ea(magic: int, user=Depends(require("admin"))):
+        db.run("DELETE FROM eas WHERE magic = ?", (magic,))
+        return {"ok": True}
+
+    # ------------------------------------------------------------------ users
+    @app.get(API + "/users")
+    def list_users(user=Depends(require("admin"))):
+        return {"users": [user_out(r) for r in db.all("SELECT * FROM users ORDER BY id")]}
+
+    @app.post(API + "/users")
+    def create_user(body: UserIn, user=Depends(require("admin"))):
+        if db.one("SELECT 1 FROM users WHERE username = ?", (body.username,)):
+            raise HTTPException(409, "Nama pengguna sudah dipakai")
+        cur = db.run(
+            "INSERT INTO users (username, display_name, role, pw_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+            (body.username, body.display_name, body.role, hash_password(body.password), time.time()),
+        )
+        return user_out(db.one("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)))
+
+    @app.patch(API + "/users/{uid}")
+    def patch_user(uid: int, body: UserPatch, user=Depends(require("admin"))):
+        row = db.one("SELECT * FROM users WHERE id = ?", (uid,))
+        if row is None:
+            raise HTTPException(404, "Pengguna tidak ditemukan")
+        if uid == user["id"] and (body.role not in (None, "admin") or body.active is False):
+            raise HTTPException(400, "Anda tidak bisa menurunkan peran atau menonaktifkan akun sendiri")
+        if body.display_name is not None:
+            db.run("UPDATE users SET display_name = ? WHERE id = ?", (body.display_name, uid))
+        if body.role is not None:
+            db.run("UPDATE users SET role = ? WHERE id = ?", (body.role, uid))
+        if body.active is not None:
+            db.run("UPDATE users SET active = ? WHERE id = ?", (int(body.active), uid))
+        if body.password is not None:
+            db.run("UPDATE users SET pw_hash = ? WHERE id = ?", (hash_password(body.password), uid))
+        if body.active is False or body.password is not None or (body.role is not None and body.role != row["role"]):
+            db.run("DELETE FROM sessions WHERE user_id = ?", (uid,))
+        return user_out(db.one("SELECT * FROM users WHERE id = ?", (uid,)))
+
+    # ------------------------------------------------------------------ dashboard page
+    @app.get("/")
+    def index():
+        return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
+
+    @app.get("/healthz")
+    def healthz():
+        return {"ok": True}
+
+    return app
+
