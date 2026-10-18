@@ -4,276 +4,331 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AlgoDesk MT5</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: top bar + fixed sidebar + dense panel grid, dark trading-desk look taken from the AlgoDesk mock */
+/* Navy trading-journal look: top account bar, sidebar, dense panels (from the user's reference screens) */
 :root {
   color-scheme: dark;
-  --bg: #0f1216;
-  --panel: #151a20;
-  --panel-2: #1a2027;
-  --line: #252c35;
-  --line-soft: #1e242c;
-  --fg: #e7eaee;
-  --fg-2: #b3bac4;
-  --muted: #7d8695;
-  --accent: #5fd3a4;
-  --accent-bg: #173328;
-  --up: #4fd39a;
-  --up-bg: #12322a;
-  --down: #f2697a;
-  --down-bg: #3a1a22;
-  --warn: #f2c14e;
-  --warn-bg: #3a3016;
-  --blue: #8aa4f8;
-  --purple: #b18cf7;
-  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bg: #08111f;
+  --panel: #0d1a2e;
+  --panel-2: #11223b;
+  --panel-3: #16294a;
+  --line: #1c3253;
+  --line-soft: #162a47;
+  --fg: #e9eef7;
+  --fg-2: #aab8cc;
+  --muted: #6f829e;
+  --accent: #2f7cf6;
+  --accent-2: #1f5fd0;
+  --accent-bg: #12305e;
+  --up: #22c55e;
+  --up-bg: #0f3424;
+  --down: #f04452;
+  --down-bg: #3c1520;
+  --warn: #f5a524;
+  --warn-bg: #3a2a10;
+  --cyan: #22b8f0;
+  --purple: #8b6cf6;
+  --gold: #e8a33c;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  --r: 8px;
+  --r: 10px;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     color-scheme: light;
-    --bg: #eef1f4; --panel: #ffffff; --panel-2: #f5f7f9; --line: #dde2e8; --line-soft: #e9edf1;
-    --fg: #141a21; --fg-2: #3b4552; --muted: #6b7584;
-    --accent: #128a5c; --accent-bg: #ddf3ea; --up: #12865a; --up-bg: #dcf2e8;
-    --down: #cc2f45; --down-bg: #fbe3e7; --warn: #a8740a; --warn-bg: #fbefd2;
-    --blue: #3d5fd6; --purple: #7a4bd8;
+    --bg: #eef2f8; --panel: #ffffff; --panel-2: #f3f6fb; --panel-3: #e8eef8; --line: #d9e1ee; --line-soft: #e6ecf5;
+    --fg: #0f1b2d; --fg-2: #3c4b62; --muted: #6a7a92;
+    --accent: #1f6ae6; --accent-2: #1756c0; --accent-bg: #dce8fd;
+    --up: #128a4a; --up-bg: #dcf3e6; --down: #d12c3c; --down-bg: #fbe2e5; --warn: #b26b00; --warn-bg: #fbeed5;
+    --cyan: #0b84b8; --purple: #6a48d8; --gold: #b7791f;
   }
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #eef1f4; --panel: #ffffff; --panel-2: #f5f7f9; --line: #dde2e8; --line-soft: #e9edf1;
-  --fg: #141a21; --fg-2: #3b4552; --muted: #6b7584;
-  --accent: #128a5c; --accent-bg: #ddf3ea; --up: #12865a; --up-bg: #dcf2e8;
-  --down: #cc2f45; --down-bg: #fbe3e7; --warn: #a8740a; --warn-bg: #fbefd2;
-  --blue: #3d5fd6; --purple: #7a4bd8;
+  --bg: #eef2f8; --panel: #ffffff; --panel-2: #f3f6fb; --panel-3: #e8eef8; --line: #d9e1ee; --line-soft: #e6ecf5;
+  --fg: #0f1b2d; --fg-2: #3c4b62; --muted: #6a7a92;
+  --accent: #1f6ae6; --accent-2: #1756c0; --accent-bg: #dce8fd;
+  --up: #128a4a; --up-bg: #dcf3e6; --down: #d12c3c; --down-bg: #fbe2e5; --warn: #b26b00; --warn-bg: #fbeed5;
+  --cyan: #0b84b8; --purple: #6a48d8; --gold: #b7791f;
 }
 * { box-sizing: border-box; }
 svg { width: 16px; height: 16px; flex: none; }
 html, body { height: 100%; }
-body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.45; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 13.5px; line-height: 1.45; }
 button { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
 .mono, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .up { color: var(--up); } .down { color: var(--down); } .warn { color: var(--warn); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; flex: none; }
+.dot.g { color: var(--up); } .dot.r { color: var(--down); } .dot.y { color: var(--warn); } .dot.b { color: var(--accent); } .dot.m { color: var(--muted); }
 
-/* top bar */
-.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line);
-  padding-block: 12px; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
-.crumb { font-size: 16px; flex-wrap: wrap; color: var(--muted); display: flex; gap: 10px; flex: 1; min-width: 0; }
-.crumb b { color: var(--fg); font-weight: 600; }
-.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; background: var(--panel-2); border: 1px solid var(--line); white-space: nowrap; }
-.pill.demo { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; flex: none; }
-.dot.g { color: var(--up); } .dot.r { color: var(--down); } .dot.y { color: var(--warn); } .dot.b { color: var(--blue); } .dot.p { color: var(--purple); }
-.user { position: relative; }
+/* ---------- top account bar ---------- */
+.top { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); background: var(--panel); min-height: 72px; }
+.top > div { display: flex; align-items: center; padding: 10px 20px; border-right: 1px solid var(--line); min-width: 0; }
+.tb-brand { gap: 14px; width: 340px; flex: none; }
+.tb-brand .logo { display: flex; gap: 3px; align-items: flex-end; height: 30px; }
+.tb-brand .logo i { width: 7px; border-radius: 2px; background: var(--accent); }
+.tb-brand b { display: block; font-size: 16.5px; letter-spacing: .04em; font-weight: 700; }
+.tb-brand small { color: var(--fg-2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 260px; }
+.tb-conn { flex-direction: column; align-items: flex-start !important; justify-content: center; gap: 1px; font-size: 12px; color: var(--fg-2); flex: none; }
+.tb-conn b { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.tb-acct { flex: 1; gap: 8px 20px; flex-wrap: wrap; }
+.tb-acct select { padding: 2px 6px; font-size: 12px; margin-top: 2px; display: block; }
+.tb-acct .m small { display: block; color: var(--fg-2); font-size: 11.5px; }
+.tb-acct .m b { font-family: var(--mono); font-size: 15px; font-weight: 600; white-space: nowrap; }
+.tb-acct .ttl { font-weight: 600; font-size: 12.5px; }
+.tb-time { flex-direction: column; align-items: flex-start !important; justify-content: center; font-size: 13px; flex: none; gap: 2px; }
+.tb-time select { margin-top: 2px; }
+.user { position: relative; border-right: 0 !important; flex: none; }
 .user > button { display: flex; align-items: center; gap: 10px; background: none; border: 0; cursor: pointer; padding: 4px; text-align: left; }
-.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--line); display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-bg); color: var(--fg); display: grid; place-items: center; font-weight: 600; font-size: 14px; }
 .user small { display: block; color: var(--muted); font-size: 12px; }
-.menu { position: absolute; right: 0; top: calc(100% + 6px); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; min-width: 220px; z-index: 20; box-shadow: 0 12px 30px rgba(0,0,0,.35); }
-.menu p { margin: 4px 8px 6px; font-size: 11px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
-.menu button { display: flex; width: 100%; justify-content: space-between; background: none; border: 0; padding: 8px; border-radius: 6px; cursor: pointer; }
+.menu { position: absolute; right: 12px; top: calc(100% - 4px); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; min-width: 220px; z-index: 30; box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+.menu button { display: flex; width: 100%; justify-content: space-between; background: none; border: 0; padding: 9px; border-radius: 6px; cursor: pointer; }
 .menu button:hover { background: var(--panel-2); }
 
-/* shell */
-.shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: calc(100% - 65px); }
-.side { border-right: 1px solid var(--line); padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; }
-.brand { display: flex; align-items: center; gap: 12px; margin: 0 4px 24px; font-weight: 700; letter-spacing: .12em; }
-.brand i { font-style: normal; width: 36px; height: 36px; border-radius: 8px; background: var(--accent); color: #062a1c; display: grid; place-items: center; font-size: 18px; }
-.brand span em { font-style: normal; color: var(--muted); }
-.navh { font-size: 12px; letter-spacing: .14em; color: var(--muted); margin: 8px 6px 6px; text-transform: uppercase; }
-.nav { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 8px; color: var(--fg-2); background: none; border: 0; border-left: 2px solid transparent; cursor: pointer; text-align: left; width: 100%; }
+/* ---------- shell ---------- */
+.shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: calc(100% - 73px); }
+.side { border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; background: var(--bg); }
+.nav { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; color: var(--fg-2); background: none; border: 0; cursor: pointer; text-align: left; width: 100%; font-size: 14px; }
 .nav:hover { background: var(--panel-2); color: var(--fg); }
-.nav.on { background: var(--accent-bg); color: var(--fg); border-left-color: var(--accent); }
-.nav svg { width: 18px; height: 18px; flex: none; }
-.nav .ct { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 12px; }
-.navgroup { display: flex; flex-direction: column; gap: 4px; }
-.vps { margin-top: auto; border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; gap: 12px; align-items: center; background: var(--panel); }
-.vps svg { width: 32px; height: 32px; color: var(--accent); flex: none; }
-.vps b { display: block; font-size: 14px; }
-.vps small { color: var(--fg-2); font-size: 13px; display: flex; gap: 6px; align-items: center; }
-.ver { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin: 14px 4px 0; }
+.nav.on { background: var(--accent); color: #fff; }
+.nav svg { width: 19px; height: 19px; }
+.nav .ct { margin-left: auto; min-width: 22px; height: 22px; border-radius: 11px; background: var(--panel-3); color: var(--fg); font-size: 12px; display: grid; place-items: center; padding: 0 6px; }
+.nav.on .ct { background: rgba(255,255,255,.2); }
+.navgroup { display: flex; flex-direction: column; gap: 3px; }
+.symbox { margin-top: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.symbox h3 { margin: 0; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+.symrow { display: grid; grid-template-columns: 30px 1fr 64px; gap: 10px; align-items: center; }
+.coin { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #1a1205; background: var(--gold); }
+.symrow b { display: block; font-size: 13px; }
+.symrow .num { font-size: 14px; display: block; }
+.symrow svg { width: 64px; height: 30px; }
+.ver { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin: 10px 4px 0; }
 
-main { padding-block: 28px 24px; padding-left: 32px; padding-right: max(32px, env(safe-area-inset-right, 0px)); min-width: 0; display: flex; flex-direction: column; gap: 16px; }
-.head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
-.eyebrow { font-size: 13px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
-.eyebrow::before { content: ""; width: 20px; height: 1px; background: var(--muted); }
-h1 { font-size: 30px; margin: 6px 0 4px; letter-spacing: -.02em; font-weight: 600; text-wrap: balance; }
-.head p { margin: 0; color: var(--fg-2); }
-.preview { text-align: right; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-2); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
-.preview span { flex-wrap: wrap; }
-.preview .mono { letter-spacing: 0; color: var(--muted); font-size: 13px; text-transform: none; }
+main { padding: 18px 20px 24px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.phead { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.phead h1 { font-size: 24px; margin: 0 0 2px; font-weight: 700; letter-spacing: -.01em; }
+.phead p { margin: 0; color: var(--fg-2); }
+.phead .acts { display: flex; gap: 10px; flex-wrap: wrap; }
 
+/* ---------- generic panels ---------- */
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
-.acct { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; padding: 14px 18px; }
-.acct .it { display: flex; gap: 12px; align-items: center; }
-.acct .it svg { width: 22px; height: 22px; color: var(--fg-2); flex: none; }
-.acct b { font-weight: 600; font-size: 14px; display: block; }
-.acct small { color: var(--fg-2); font-size: 13px; }
-.acct .sep { width: 1px; align-self: stretch; background: var(--line); }
-.acct .sync { margin-left: auto; color: var(--fg-2); font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.ph { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; flex-wrap: wrap; }
+.ph h2 { font-size: 15.5px; margin: 0; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.ph p { margin: 2px 0 0; color: var(--fg-2); font-size: 12.5px; }
+.ph .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grid { display: grid; gap: 14px; }
+.g-ov1 { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.1fr) minmax(0, .75fr); }
+.g-ov2 { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+.g-ea2 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.g-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.kpi { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
-.kpi .lbl { display: flex; justify-content: space-between; color: var(--fg-2); }
-.kpi .lbl svg { width: 20px; height: 20px; color: var(--muted); }
-.kpi .val { font-family: var(--mono); font-size: clamp(18px, 1.7vw, 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; font-variant-numeric: tabular-nums; }
-.kpi .val small { font-size: 14px; color: var(--fg-2); margin-left: 6px; }
-.kpi .sub { color: var(--fg-2); font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-
-.row { display: grid; gap: 12px; }
-.r-mw { grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); }
-.r-pos { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
-.ph { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 18px 14px; border-bottom: 1px solid var(--line-soft); }
-.ph h2 { font-size: 15px; margin: 0; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-.ph p { margin: 4px 0 0 17px; color: var(--fg-2); font-size: 13px; }
-.badge { font-family: var(--mono); font-size: 11px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 1px 7px; color: var(--fg-2); }
-.btn { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 6px; cursor: pointer; color: var(--fg); white-space: nowrap; font-size: 13px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 7px; cursor: pointer; color: var(--fg); white-space: nowrap; font-size: 13px; font-weight: 500; }
 .btn:hover { border-color: var(--muted); }
-.btn svg { width: 16px; height: 16px; }
-.btn.ghost { background: none; border-color: transparent; }
-.btn.primary { background: var(--accent); color: #062a1c; border-color: var(--accent); font-weight: 600; }
-.btn.danger { background: var(--down-bg); color: var(--down); border-color: transparent; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.green { background: var(--up); border-color: var(--up); color: #04220f; font-weight: 600; }
+.btn.red { background: var(--down); border-color: var(--down); color: #fff; font-weight: 600; }
+.btn.outline { background: none; }
+.btn.sm { padding: 5px 10px; font-size: 12.5px; }
+.btn.icon { padding: 7px; }
 .btn[disabled] { opacity: .45; cursor: not-allowed; }
-
-.tw { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 500; padding: 12px 18px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
-td { padding: 10px 18px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
-tr:last-child td { border-bottom: 0; }
-td.r, th.r { text-align: right; }
-.sym { font-family: var(--mono); font-weight: 500; font-size: 13px; }
-.px { font-family: var(--mono); font-size: 13px; color: var(--fg-2); font-variant-numeric: tabular-nums; transition: color .6s; }
-.px .fu { color: var(--up); } .px .fd { color: var(--down); }
-.struct { font-size: 13px; color: var(--fg-2); }
-.struct b { font-weight: 500; }
-.sig { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 4px; letter-spacing: .04em; }
-.sig svg { width: 14px; height: 14px; }
-.sig.buy { background: var(--up-bg); color: var(--up); }
-.sig.sell { background: var(--down-bg); color: var(--down); }
-.sig.none { background: var(--panel-2); color: var(--muted); }
-.pf { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line-soft); color: var(--fg-2); font-size: 13px; gap: 10px; flex-wrap: wrap; }
-.pf .lnk { background: none; border: 0; color: var(--fg); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
-.pf .lnk svg { width: 16px; height: 16px; }
-
-/* protection */
-.prot { padding-bottom: 18px; display: flex; flex-direction: column; }
-.prot .ph { border-bottom: 0; }
-.prot .body { padding: 0 18px; display: flex; flex-direction: column; gap: 14px; }
-.state { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-.active { color: var(--up); font-weight: 600; letter-spacing: .1em; font-size: 13px; display: flex; gap: 6px; align-items: center; }
-.active svg { width: 18px; height: 18px; }
-.pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
-.pgrid small { color: var(--fg-2); font-size: 13px; }
-.pgrid .num { font-size: 14px; font-weight: 500; }
-.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--warn); border-radius: 3px; transition: width .6s; }
-.bar.crit i { background: var(--down); }
-.prow { display: flex; justify-content: space-between; font-size: 13px; color: var(--fg-2); gap: 8px; }
-.note { display: flex; gap: 10px; color: var(--fg-2); font-size: 13px; border-top: 1px solid var(--line-soft); padding-top: 14px; }
-.note svg { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--muted); }
-.pause { width: 100%; justify-content: center; padding: 11px; font-size: 14px; }
-.confirm { border: 1px solid var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
-.confirm div { display: flex; gap: 8px; justify-content: flex-end; }
-.center { text-align: center; color: var(--muted); font-size: 13px; }
-
-/* positions & EAs */
-.pi { display: flex; gap: 12px; align-items: center; }
-.pi .ic { width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center; flex: none; }
-.pi .ic svg { width: 16px; height: 16px; }
-.ic.b { background: var(--up-bg); color: var(--up); } .ic.s { background: var(--down-bg); color: var(--down); }
-.pi b { font-family: var(--mono); font-size: 13px; font-weight: 500; }
-.pi .sd { font-size: 12px; color: var(--muted); margin-left: 8px; letter-spacing: .06em; }
-.pi small { display: block; color: var(--fg-2); font-size: 13px; }
-.mg { font-family: var(--mono); font-size: 13px; }
-.mg small { display: block; font-family: var(--sans); color: var(--fg-2); }
-.pl { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; }
-.ea { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--line-soft); }
-.ea .ic { width: 36px; height: 36px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); display: grid; place-items: center; flex: none; }
-.ea .ic svg { width: 18px; height: 18px; }
-.ea b { font-weight: 600; display: block; }
-.ea small { color: var(--fg-2); font-size: 13px; }
-.ea .st { margin-left: auto; display: flex; gap: 14px; align-items: center; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
-.ea .st span { display: inline-flex; gap: 6px; align-items: center; font-family: var(--sans); font-size: 12px; letter-spacing: .08em; color: var(--fg-2); }
-.lock { display: flex; gap: 10px; align-items: center; padding: 12px 18px; color: var(--fg-2); font-size: 13px; }
-.lock svg { width: 16px; height: 16px; }
-
-/* chart */
-.chart { padding: 8px 18px 14px; }
-.cw { position: relative; height: 170px; margin-left: 58px; }
-.cw svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.yl { position: absolute; left: -58px; font-family: var(--mono); font-size: 12px; color: var(--muted); transform: translateY(-50%); }
-.xl { display: flex; justify-content: space-between; margin: 8px 0 0 58px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
-.endpt { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--blue); transform: translate(-50%, -50%); box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 25%, transparent); }
-.agent .li { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--line-soft); color: var(--fg-2); }
-.agent .li:last-child { border-bottom: 0; }
-.agent .li svg { width: 18px; height: 18px; flex: none; }
-.agent .li span:last-child { margin-left: auto; color: var(--fg); }
-.norm { color: var(--up); font-weight: 600; letter-spacing: .1em; font-size: 13px; display: flex; gap: 6px; align-items: center; }
-
-.foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: var(--fg-2); font-size: 13px; }
-.foot span { display: flex; gap: 8px; align-items: center; }
-
-
-/* forms / generic */
-.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding: 18px; }
-label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg-2); }
-input, select { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 8px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); color: var(--fg-2); white-space: nowrap; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { background: none; border: 0; padding: 6px 13px; cursor: pointer; color: var(--fg-2); font-size: 12.5px; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent-bg); color: var(--fg); box-shadow: inset 0 0 0 1px var(--accent); }
+select, input { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font-size: 13px; }
+label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--fg-2); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px; border-radius: 5px; background: var(--panel-2); border: 1px solid var(--line); color: var(--fg-2); white-space: nowrap; }
 .chip.g { background: var(--up-bg); color: var(--up); border-color: transparent; }
 .chip.r { background: var(--down-bg); color: var(--down); border-color: transparent; }
 .chip.y { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
-.log { font-family: var(--mono); font-size: 12px; }
-.empty { padding: 28px 18px; text-align: center; color: var(--muted); }
-.toggle { position: relative; width: 38px; height: 22px; border-radius: 11px; background: var(--line); border: 0; cursor: pointer; flex: none; }
-.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--fg-2); transition: left .2s; }
-.toggle.on { background: var(--accent); }
-.toggle.on::after { left: 19px; background: #062a1c; }
-.toggle[disabled] { opacity: .45; cursor: not-allowed; }
-.pop { position: absolute; right: 18px; top: 56px; z-index: 10; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 220px; box-shadow: 0 12px 30px rgba(0,0,0,.35); }
-.rel { position: relative; }
+.chip.b { background: var(--accent-bg); color: var(--cyan); border-color: transparent; }
+.chip.gold { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+.empty { padding: 26px 16px; text-align: center; color: var(--muted); }
 
+.tw { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; color: var(--fg-2); font-weight: 500; padding: 9px 12px; background: var(--panel-2); white-space: nowrap; }
+td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; }
+td.c, th.c { text-align: center; }
+.side-b { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+.side-b.buy { background: var(--up-bg); color: var(--up); } .side-b.sell { background: var(--down-bg); color: var(--down); }
+.bkt { font-family: var(--mono); font-size: 12px; color: var(--cyan); background: var(--accent-bg); padding: 2px 7px; border-radius: 4px; }
+
+/* filter bar */
+.fbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 12px; }
+.fbar .f { display: flex; flex-direction: row; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 0 0 0 10px; background: var(--panel); }
+.fbar .f span { color: var(--fg-2); font-size: 12.5px; }
+.fbar .f select { border: 0; border-left: 1px solid var(--line); border-radius: 0 8px 8px 0; background: var(--panel-2); min-width: 120px; }
+.fbar .range { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; color: var(--fg-2); }
+.fbar .live { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--fg-2); font-size: 12.5px; }
+.fbar .live b { color: var(--up); font-weight: 500; }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.kpi { padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; min-height: 112px; position: relative; }
+.kpi .lbl { grid-column: 1 / -1; color: var(--fg-2); font-size: 13px; display: flex; justify-content: space-between; }
+.kpi .val { font-family: var(--mono); font-size: 26px; font-weight: 600; white-space: nowrap; line-height: 1.15; }
+.kpi .val small { font-size: 15px; margin-left: 4px; }
+.kpi .sub { grid-column: 1 / -1; color: var(--fg-2); font-size: 12.5px; display: flex; gap: 14px; flex-wrap: wrap; }
+.kpi .sub b { display: block; font-family: var(--mono); color: var(--fg); font-weight: 500; font-size: 13px; }
+.kpi .vis { grid-row: 2 / 4; grid-column: 2; align-self: center; }
+.kpi .vis svg { width: 70px; height: 40px; }
+.ring { width: 64px; height: 64px; }
+.ring svg { width: 64px; height: 64px; }
+
+/* charts */
+.chart { position: relative; padding: 4px 16px 12px 56px; }
+.chart svg.plot { width: 100%; height: 190px; display: block; overflow: visible; }
+.yl { position: absolute; left: 6px; width: 46px; text-align: right; font-family: var(--mono); font-size: 11px; color: var(--muted); transform: translateY(-50%); }
+.xl { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; }
+.legend { display: flex; justify-content: center; gap: 18px; color: var(--fg-2); font-size: 12px; margin-top: 6px; }
+.legend span { display: flex; gap: 6px; align-items: center; }
+.legend i { width: 14px; border-top: 2px solid var(--up); }
+.legend i.dash { border-top: 2px dashed var(--accent); }
+.symperf { display: flex; flex-direction: column; }
+.symperf .it { display: grid; grid-template-columns: 38px 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line-soft); }
+.symperf .coin { width: 38px; height: 38px; font-size: 14px; }
+.symperf b { font-size: 14px; }
+.symperf .r { text-align: right; }
+.symperf svg { width: 90px; height: 34px; }
+
+/* basket & risk */
+.basket { border: 1px solid var(--line); border-radius: 8px; margin: 0 12px 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.basket .bh { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.basket .bh b { font-family: var(--mono); }
+.basket .bh .muted { font-size: 12.5px; }
+.basket .bh .op { margin-left: auto; color: var(--fg-2); font-size: 12.5px; }
+.ring-o { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--up); }
+.bgrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px 10px; }
+.bgrid small { color: var(--fg-2); font-size: 11.5px; display: block; }
+.bgrid b { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+.bar { height: 7px; border-radius: 4px; background: var(--panel-3); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--up)); }
+.bar.warn i { background: var(--warn); } .bar.crit i { background: var(--down); }
+.bfoot { display: flex; gap: 14px; justify-content: space-between; align-items: center; font-size: 12px; color: var(--fg-2); }
+.rgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; padding: 12px 16px; }
+.rgrid small, .rmini small { color: var(--fg-2); font-size: 12px; display: block; }
+.rgrid b, .rmini b { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+.rmini { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-top: 1px solid var(--line-soft); }
+.rmini > div { padding: 10px 12px; border-right: 1px solid var(--line-soft); }
+.rmini > div:last-child { border-right: 0; }
+.rmini b { font-size: 14px; }
+
+/* EA cards */
+.eacards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.eac { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.eac .h { display: flex; justify-content: space-between; gap: 10px; }
+.eac .h b { font-size: 15.5px; display: block; }
+.eac .h small { color: var(--fg-2); font-size: 12.5px; }
+.eac .st { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.sw { position: relative; width: 74px; height: 30px; border-radius: 15px; border: 0; cursor: pointer; background: var(--panel-3); color: var(--fg-2); font-size: 12px; font-weight: 600; text-align: right; padding: 0 12px; }
+.sw::after { content: ""; position: absolute; top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .2s; }
+.sw.on { background: var(--up); color: #fff; text-align: left; }
+.sw.on::after { left: 48px; }
+.sw[disabled] { opacity: .5; cursor: not-allowed; }
+.run { font-size: 11.5px; padding: 2px 9px; border-radius: 10px; border: 1px solid currentColor; }
+.run.g { color: var(--up); } .run.r { color: var(--down); } .run.y { color: var(--warn); }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 12.5px; color: var(--fg-2); }
+.kv b { color: var(--fg); font-family: var(--mono); font-weight: 500; text-align: right; }
+.estat { display: grid; grid-template-columns: 1.35fr .9fr 1fr 1fr; border-top: 1px solid var(--line-soft); padding-top: 10px; }
+.estat > div { padding: 0 6px; border-left: 1px solid var(--line-soft); min-width: 0; }
+.estat > div:first-child { padding-left: 0; border-left: 0; }
+.estat small { color: var(--fg-2); font-size: 11px; display: block; line-height: 1.25; min-height: 28px; }
+.estat b { font-family: var(--mono); font-size: 16px; font-weight: 600; white-space: nowrap; }
+.estat em { font-style: normal; font-family: var(--mono); font-size: 12px; display: block; }
+.eac .spk svg { width: 100%; height: 44px; display: block; }
+.eac .btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.eac form { display: flex; flex-direction: column; gap: 8px; }
+.donut { display: flex; gap: 22px; align-items: center; padding: 8px 18px 18px; flex-wrap: wrap; }
+.donut svg { width: 150px; height: 150px; }
+.donut ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; flex: 1; min-width: 160px; }
+.donut li { display: grid; grid-template-columns: 14px 1fr auto auto; gap: 12px; align-items: center; }
+.ev { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+.ev.INFO { background: var(--accent-bg); color: var(--cyan); } .ev.TRADE { background: var(--up-bg); color: var(--up); }
+.ev.WARN { background: var(--warn-bg); color: var(--warn); } .ev.ERROR { background: var(--down-bg); color: var(--down); }
+.res { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 4px 16px 12px; }
+.res small { color: var(--fg-2); font-size: 12px; display: block; }
+.res b { font-family: var(--mono); font-size: 16px; display: block; margin-bottom: 6px; }
+
+/* protection (risk center page) */
+.prot { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.state { display: flex; align-items: center; gap: 8px; }
+.prow { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--fg-2); gap: 8px; }
+.confirm { border: 1px solid var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.confirm div { display: flex; gap: 8px; justify-content: flex-end; }
+.center { text-align: center; color: var(--muted); font-size: 12.5px; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; padding: 4px 16px 16px; }
+.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toggle { position: relative; width: 38px; height: 22px; border-radius: 11px; background: var(--panel-3); border: 0; cursor: pointer; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--fg-2); transition: left .2s; }
+.toggle.on { background: var(--up); } .toggle.on::after { left: 19px; background: #fff; }
+.toggle[disabled] { opacity: .45; cursor: not-allowed; }
+.pf { padding: 10px 16px; border-top: 1px solid var(--line-soft); color: var(--fg-2); font-size: 12.5px; }
+.li { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line-soft); color: var(--fg-2); }
+.li span:last-child { margin-left: auto; color: var(--fg); }
+.foot { color: var(--muted); font-size: 12px; }
+
+/* modal & toasts */
+.modal { position: fixed; inset: 0; background: rgba(3,8,16,.66); display: grid; place-items: center; z-index: 40; padding: 16px; }
+.modal .card { width: min(980px, 100%); max-height: 86vh; display: flex; flex-direction: column; }
+.modal .tw { overflow: auto; }
 .toasts { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: calc(100% - 32px); }
-.toast { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 10px 14px; font-size: 13px; box-shadow: 0 10px 24px rgba(0,0,0,.35); animation: tin .25s ease-out; }
-.toast.err { border-left-color: var(--down); } .toast.wrn { border-left-color: var(--warn); }
+.toast { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--up); border-radius: 8px; padding: 10px 14px; font-size: 13px; box-shadow: 0 10px 24px rgba(0,0,0,.35); animation: tin .25s ease-out; }
+.toast.err { border-left-color: var(--down); }
 @keyframes tin { from { transform: translateY(8px); opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
-@media (max-width: 1180px) {
-  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .r-mw, .r-pos { grid-template-columns: minmax(0, 1fr); }
-}
-@media (max-width: 820px) {
-  .shell { grid-template-columns: minmax(0, 1fr); }
-  .side { border-right: 0; border-bottom: 1px solid var(--line); flex-direction: row; overflow-x: auto; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 4px; }
-  .brand, .navh, .vps, .ver { display: none; }
-  .navgroup { flex-direction: row; }
-  .nav { width: auto; white-space: nowrap; padding: 8px 12px; border-left: 0; }
-  main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px; }
-  .top { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .preview { align-items: flex-start; text-align: left; }
-  .acct .sep { display: none; } .acct .sync { margin-left: 0; }
-}
-@media (max-width: 520px) {
-  .kpis { grid-template-columns: minmax(0, 1fr); }
-  .top .pill:not(.demo), .user small { display: none; }
-  .crumb span.ws { display: none; }
-  th, td { padding-left: 12px; padding-right: 12px; }
-  .ea .st { flex-direction: column; align-items: flex-end; gap: 2px; }
-}
-body { margin: 0; }
-[hidden] { display: none !important; }
-.login { min-height: 100%; display: grid; place-items: center; padding-block: 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.login { min-height: 100%; display: grid; place-items: center; padding: 32px 16px; }
 .login form { width: min(380px, 100%); padding: 28px; display: flex; flex-direction: column; gap: 16px; }
 .login h1 { font-size: 22px; margin: 0; }
 .login .err { color: var(--down); font-size: 13px; min-height: 18px; }
-.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.inline input, .inline select { padding: 6px 8px; font-size: 13px; }
-.offline { color: var(--down); font-weight: 600; letter-spacing: .1em; font-size: 13px; display: flex; gap: 6px; align-items: center; }
-.pill.real { background: var(--down-bg); color: var(--down); border-color: transparent; }
-.pill.bad { color: var(--down); }
+
+@media (max-width: 1500px) {
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g-ov1 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .g-ov1 > :last-child { grid-column: 1 / -1; }
+  .tb-brand { width: auto; }
+}
+@media (max-width: 1180px) {
+  .g-ov1, .g-ov2, .g-ea2, .g-2 { grid-template-columns: minmax(0, 1fr); }
+  .top { flex-wrap: wrap; }
+  .top > div { border-bottom: 1px solid var(--line); }
+  .tb-acct { order: 5; flex-basis: 100%; }
+}
+@media (max-width: 820px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .side { border-right: 0; border-bottom: 1px solid var(--line); flex-direction: row; overflow-x: auto; padding: 8px 16px; }
+  .navgroup { flex-direction: row; }
+  .nav { width: auto; white-space: nowrap; padding: 8px 12px; }
+  .symbox, .ver { display: none; }
+  main { padding: 14px 16px 20px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rmini { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .top > div { padding: 10px 16px; }
+  .tb-brand small { max-width: 200px; }
+  .fbar .live { margin-left: 0; }
+}
+@media (max-width: 520px) {
+  .kpi { min-height: 0; padding: 12px; }
+  .kpi .val { font-size: 20px; }
+  .kpi .vis { display: none; }
+  .top .tb-time { display: none; }
+  .tb-brand { flex: 1; }
+  .top .tb-conn, .user small, .user b { display: none; }
+  .tb-brand b { font-size: 14px; }
+  .tb-acct { gap: 14px; }
+  .estat b { font-size: 14px; }
+}
 </style>
 </head>
 <body>
@@ -308,75 +363,105 @@ body { margin: 0; }
     <symbol id="i-radio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2"/><path d="M8 8a6 6 0 0 0 0 8M16 8a6 6 0 0 1 0 8M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14"/></symbol>
     <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></symbol>
     <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+    <symbol id="i-basket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9h18l-2 11H5z"/><path d="M8 9l4-6 4 6M9 13v4M15 13v4M12 13v4"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   </defs>
 </svg>
 <section class="login" id="loginView" hidden>
   <form class="card" id="loginForm">
-    <div class="brand" style="margin:0"><i>A</i><span>ALGO<em>/</em>DESK</span></div>
+    <div class="tb-brand" style="width:auto;padding:0;gap:12px;display:flex;align-items:center"><span class="logo"><i style="height:12px"></i><i style="height:20px"></i><i style="height:28px"></i></span><b>ALGODESK</b></div>
     <h1>Masuk ke dashboard</h1>
     <label>Nama pengguna<input id="lu" autocomplete="username" required></label>
     <label>Kata sandi<input id="lp" type="password" autocomplete="current-password" required></label>
     <div class="err" id="loginErr"></div>
-    <button class="btn primary" type="submit" style="justify-content:center;padding:10px">Masuk</button>
+    <button class="btn primary" type="submit" style="padding:10px">Masuk</button>
   </form>
 </section>
 
 <div id="appView" hidden>
 <header class="top">
-  <div class="crumb"><span class="ws">Ruang kerja</span><span class="ws">/</span><b id="crumb">Ikhtisar trading</b></div>
-  <span class="pill demo" id="acctPill"><span class="dot"></span>Demo</span>
-  <span class="pill" id="mt5Pill"><svg><use href="#i-radio"/></svg>MT5</span>
+  <div class="tb-brand"><span class="logo"><i style="height:12px"></i><i style="height:20px"></i><i style="height:28px"></i></span>
+    <div><b>ALGODESK TRADING JOURNAL</b><small id="tbSyms">–</small></div></div>
+  <div class="tb-conn" id="tbConn"></div>
+  <div class="tb-acct" id="tbAcct"></div>
+  <div class="tb-time"><span id="tbDate"></span><b id="tbClock" class="mono"></b></div>
   <div class="user">
     <button id="userBtn" aria-haspopup="true" aria-expanded="false">
       <span class="avatar" id="avatar">–</span>
       <span><b id="uname">–</b><small id="urole"></small></span>
       <svg><use href="#i-chev"/></svg>
     </button>
-    <div class="menu" id="userMenu" hidden>
-      <button data-act="logout">Keluar <span class="muted">akhiri sesi</span></button>
-    </div>
+    <div class="menu" id="userMenu" hidden><button data-act="logout">Keluar <span class="muted">akhiri sesi</span></button></div>
   </div>
 </header>
 
 <div class="shell">
   <aside class="side">
-    <div class="brand"><i>A</i><span>ALGO<em>/</em>DESK</span></div>
-    <div class="navh">Menu utama</div>
     <div class="navgroup">
-      <button class="nav on" data-view="overview"><svg><use href="#i-grid"/></svg>Ringkasan</button>
-      <button class="nav" data-view="market"><svg><use href="#i-candle"/></svg>Market Watch<span class="ct" id="navSym">0</span></button>
-      <button class="nav" data-view="positions"><svg><use href="#i-brief"/></svg>Posisi<span class="ct" id="navPos">0</span></button>
-      <button class="nav" data-view="eas"><svg><use href="#i-bot"/></svg>Instansi EA</button>
-      <button class="nav" data-view="perf"><svg><use href="#i-perf"/></svg>Performa</button>
-    </div>
-    <div class="navh" style="margin-top:18px">Administrasi</div>
-    <div class="navgroup">
+      <button class="nav on" data-view="overview"><svg><use href="#i-home"/></svg>Overview</button>
+      <button class="nav" data-view="positions"><svg><use href="#i-brief"/></svg>Open Positions<span class="ct" id="navPos">0</span></button>
+      <button class="nav" data-view="history"><svg><use href="#i-list"/></svg>Trade History</button>
+      <button class="nav" data-view="eas"><svg><use href="#i-bot"/></svg>EA Expert (Bot)</button>
+      <button class="nav" data-view="basket"><svg><use href="#i-basket"/></svg>Basket Monitor<span class="ct" id="navBkt">0</span></button>
+      <button class="nav" data-view="risk"><svg><use href="#i-shield"/></svg>Risk Center</button>
+      <button class="nav" data-view="analytics"><svg><use href="#i-perf"/></svg>Strategy Analytics</button>
+      <button class="nav" data-view="market"><svg><use href="#i-candle"/></svg>Market Watch</button>
+      <button class="nav" data-view="diag"><svg><use href="#i-pulse"/></svg>Broker Diagnostics</button>
       <button class="nav" data-view="users" id="navUsers"><svg><use href="#i-users"/></svg>Pengguna &amp; RBAC</button>
-      <button class="nav" data-view="settings"><svg><use href="#i-sliders"/></svg>Pengaturan</button>
+      <button class="nav" data-view="settings"><svg><use href="#i-gear"/></svg>Settings</button>
     </div>
-    <div class="vps"><svg><use href="#i-server"/></svg><div><b>VPS MT5 Agent</b><small id="vpsState"><span class="dot"></span>–</small></div></div>
-    <div class="ver"><span>AlgoDesk</span><span class="mono">v0.10</span></div>
+    <div class="symbox"><h3>Symbols <button class="btn icon sm outline" data-go="market" aria-label="Buka Market Watch"><svg><use href="#i-plus"/></svg></button></h3><div id="symList" style="display:flex;flex-direction:column;gap:12px"></div></div>
+    <div class="ver"><span>AlgoDesk</span><span class="mono" id="verTag">–</span></div>
   </aside>
   <main id="main"></main>
 </div>
 </div>
+<div id="modal"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script>
 (() => {
   const ROLE_LABEL = { admin: 'Super Admin', trader: 'Trader', viewer: 'Viewer' };
-  const CMD_LABEL = { pause_entry: 'Jeda entry', resume_entry: 'Lanjutkan entry', disable_magic: 'Nonaktifkan magic', enable_magic: 'Aktifkan magic', set_limit: 'Ubah batas rugi' };
+  const CMD_LABEL = { pause_entry: 'Jeda entry', resume_entry: 'Lanjutkan entry', disable_magic: 'Nonaktifkan EA', enable_magic: 'Aktifkan EA', set_limit: 'Ubah batas rugi' };
   const STATUS_LABEL = { pending: 'Menunggu agent', acked: 'Dikonfirmasi agent', failed: 'Ditolak agent', expired: 'Kedaluwarsa' };
-  const S = { cur: null, me: null, st: null, fetchedAt: 0, eq: [], eqHours: 24, cmds: [], users: [], view: 'overview', confirm: false, pending: null, prevBid: {}, dir: {}, timers: [] };
+  const PERIODS = { 1: 'Hari ini', 7: '7 Hari', 30: '30 Hari' };
+  const S = {
+    me: null, st: null, fetchedAt: 0, eq: [], cmds: [], users: [], view: 'overview', confirm: false, pending: null,
+    hist: {}, timers: [], lastUpdate: null,
+    days: 7, sym: 'ALL', eqTab: 'equity', dpTab: 'pl', trades: [], tradesStart: null,
+    statsDay: [], perfTab: 'day', statsPer: [], perStart: null, deals: [], dealsStart: null,
+    logEa: '', logSym: '', logEv: '', histSym: 'ALL', histQ: '', histDays: 7, histTrades: [], basketSym: 'ALL',
+    edit: null, detail: null, detailTrades: [],
+  };
 
   // ---------- helpers ----------
   const $ = id => document.getElementById(id);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const icon = id => `<svg><use href="#${id}"/></svg>`;
+  const tel = () => S.st?.telemetry;
+  const can = what => ({ control: ['admin', 'trader'], admin: ['admin'] }[what] || []).includes(S.me?.role);
+  const ago = () => S.st?.agent?.age == null ? null : S.st.agent.age + (Date.now() - S.fetchedAt) / 1000;
+  const sum = (xs, f = x => x) => xs.reduce((a, x) => a + f(x), 0);
+
+  // Deal and day-start times are broker server time encoded as epoch seconds, so they are shown as UTC.
+  // Command times are real epoch; shifting them by the server's offset puts them on the same clock.
+  const srvOffset = () => { const t = tel(); return t?.server_time && t?.sent_at ? Math.round((t.server_time - t.sent_at) / 900) * 900 : 0; };
+  const fmtSrv = (ts, o = {}) => ts == null ? '–' : new Date(ts * 1000).toLocaleString('id-ID', { timeZone: 'UTC', ...o });
+  const srvHms = ts => fmtSrv(ts, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const srvDay = ts => fmtSrv(ts, { day: '2-digit', month: 'short' });
+  const srvDayTime = ts => fmtSrv(ts, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const dur = s => { s = Math.max(0, Math.round(s)); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d}h ${h}j` : h ? `${h}j ${m}m` : `${m}m`; };
+
   // ---------- currency ----------
   // Amounts arrive in the account currency (USD, USC/USDc cent accounts, IDR) and are shown in the
   // currency the viewer picks. USD/IDR comes from the broker's USDIDR symbol when it has one,
-  // otherwise from the rate the viewer enters in Pengaturan. Both choices stay in this browser only.
+  // otherwise from the rate the viewer enters in Settings. Both choices stay in this browser only.
   const pref = { get: k => { try { return localStorage.getItem('algodesk.' + k); } catch { return null; } },
                  set: (k, v) => { try { localStorage.setItem('algodesk.' + k, v); } catch {} } };
   const CURS = ['USD', 'USC', 'IDR'];
@@ -387,28 +472,28 @@ body { margin: 0; }
   const idrRate = () => brokerIdr() || manualIdr();
   const usdPer = c => c === 'USD' ? 1 : c === 'USC' ? 0.01 : c === 'IDR' && idrRate() ? 1 / idrRate() : null;
   const acctCur = () => normCur(tel()?.account?.currency);
-  // The picked currency, or the account currency when conversion is impossible (IDR without a rate).
   const viewCur = () => { const c = S.cur || acctCur(); return usdPer(c) && usdPer(acctCur()) ? c : acctCur(); };
   const conv = v => { const from = usdPer(acctCur()), to = usdPer(viewCur()); return from && to ? v * from / to : v; };
-  const fmtUsd = (v, sign) => {
-    if (v == null) return '–';
+  const fmtNum = (v, sign) => {
+    if (v == null || Number.isNaN(v)) return '–';
     const cur = viewCur(), x = conv(v), dec = cur === 'IDR' ? 0 : 2;
-    const n = Math.abs(x).toLocaleString(cur === 'IDR' ? 'id-ID' : 'en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-    return (x < 0 ? '−' : sign && x > 0 ? '+' : '') + (cur === 'USD' ? '$' + n : cur === 'IDR' ? 'Rp\u00a0' + n : n + '\u00a0' + cur);
+    return (x < 0 ? '−' : sign && x > 0 ? '+' : '') + Math.abs(x).toLocaleString(cur === 'IDR' ? 'id-ID' : 'en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   };
-  // Short axis labels: $10.25k, Rp 168,4 jt, 1.02M USC.
+  const fmtMoney = (v, sign) => {
+    if (v == null || Number.isNaN(v)) return '–';
+    const cur = viewCur(), n = fmtNum(v, sign), s = /^[−+]/.test(n) ? n[0] : '', body = s ? n.slice(1) : n;
+    return s + (cur === 'USD' ? '$' + body : cur === 'IDR' ? 'Rp ' + body : body + ' ' + cur);
+  };
   const fmtAxis = v => {
-    const cur = viewCur(), x = conv(v);
-    if (cur === 'IDR') return 'Rp ' + (x >= 1e9 ? (x / 1e9).toFixed(2) + ' M' : (x / 1e6).toFixed(1) + ' jt');
-    const k = x >= 1e6 ? (x / 1e6).toFixed(2) + 'M' : (x / 1e3).toFixed(2) + 'k';
-    return cur === 'USD' ? '$' + k : k + ' ' + cur;
+    const cur = viewCur(), x = conv(v), a = Math.abs(x);
+    const n = cur === 'IDR' ? (a >= 1e9 ? (x / 1e9).toFixed(2) + 'M' : (x / 1e6).toFixed(1) + 'jt')
+      : a >= 1e6 ? (x / 1e6).toFixed(2) + 'M' : a >= 1e4 ? (x / 1e3).toFixed(1) + 'k' : x.toFixed(0);
+    return n;
   };
-  const fmtPx = (v, d) => v == null ? '–' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
-  const hhmm = ts => new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  const hms = ts => new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const can = what => ({ control: ['admin', 'trader'], admin: ['admin'] }[what] || []).includes(S.me?.role);
-  const tel = () => S.st?.telemetry;
-  const ago = () => S.st?.agent?.age == null ? null : S.st.agent.age + (Date.now() - S.fetchedAt) / 1000;
+  const fmtPx = (v, d = 2) => v == null ? '–' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = (v, sign = true) => v == null || !isFinite(v) ? '–' : (v < 0 ? '−' : sign && v > 0 ? '+' : '') + Math.abs(v).toFixed(2) + '%';
+  const cls = v => v < 0 ? 'down' : v > 0 ? 'up' : '';
+  const symDigits = sym => tel()?.symbols?.find(s => s.symbol === sym)?.digits ?? (tel()?.positions?.find(p => p.symbol === sym)?.digits) ?? 2;
 
   async function api(path, opts = {}) {
     const init = { method: opts.method || 'GET', credentials: 'same-origin', headers: {} };
@@ -425,227 +510,444 @@ body { margin: 0; }
     $('toasts').appendChild(el); setTimeout(() => el.remove(), 4500);
   }
 
-  // ---------- data views ----------
-  const structHtml = s => s.structure === 'bull' ? `<span class="struct"><b class="up">HH · HL</b> Bullish</span>`
-    : s.structure === 'bear' ? `<span class="struct"><b class="down">LH · LL</b> Bearish</span>`
-    : `<span class="struct"><b>MIXED</b> Netral</span>`;
-  const sigHtml = s => s.signal === 'BUY' ? `<span class="sig buy">${icon('i-up')}BUY</span>` : s.signal === 'SELL' ? `<span class="sig sell">${icon('i-down')}SELL</span>` : `<span class="sig none">–</span>`;
-  const eaName = magic => S.st?.eas.find(e => e.magic === magic)?.name;
-
-  function eaList() {
-    const t = tel(), map = new Map();
-    (S.st?.eas || []).forEach(e => map.set(e.magic, { ...e, known: true }));
-    (t?.positions || []).forEach(p => { if (p.magic && !map.has(p.magic)) map.set(p.magic, { magic: p.magic, name: p.comment || 'Tanpa nama', scope: p.symbol, known: false }); });
-    (t?.protection?.disabled_magics || []).forEach(m => { if (!map.has(m)) map.set(m, { magic: m, name: 'Tanpa nama', scope: '', known: false }); });
-    return [...map.values()].sort((a, b) => a.magic - b.magic);
+  // ---------- small charts ----------
+  function spark(vals, color = 'var(--up)', w = 100, h = 34, fill = true) {
+    if (!vals || vals.length < 2) return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><line x1="0" x2="${w}" y1="${h - 2}" y2="${h - 2}" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke" opacity=".7"/></svg>`;
+    const lo = Math.min(...vals), hi = Math.max(...vals), sp = hi - lo || 1;
+    const pts = vals.map((v, i) => [i / (vals.length - 1) * w, h - 2 - (v - lo) / sp * (h - 4)]);
+    const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('');
+    const id = 'sg' + Math.random().toString(36).slice(2, 8);
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+      ${fill ? `<path d="${d}L${w},${h}L0,${h}Z" fill="url(#${id})"/>` : ''}<path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
   }
-  function eaStatus(magic) {
-    const p = tel()?.protection;
-    if (!p) return `<span><span class="dot" style="color:var(--muted)"></span>–</span>`;
-    if ((p.disabled_magics || []).includes(magic)) return `<span><span class="dot" style="color:var(--muted)"></span>NONAKTIF</span>`;
-    if (p.entry_state === 'blocked') return `<span class="down"><span class="dot r"></span>DIBLOKIR</span>`;
-    if (p.entry_state === 'paused') return `<span class="warn"><span class="dot y"></span>DIJEDA</span>`;
-    return `<span><span class="dot g"></span>AKTIF</span>`;
+  function ring(p, color = 'var(--up)') {
+    const r = 26, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, p / 100));
+    return `<div class="ring"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" fill="none" stroke="var(--panel-3)" stroke-width="7"/>
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 32 32)"/></svg></div>`;
   }
+  const niceTicks = (min, max, n = 4) => {
+    const span = Math.max(max - min, 1e-9), raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw);
+    const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step, t = [];
+    for (let v = lo; v <= hi + step / 2; v += step) t.push(+v.toFixed(10));
+    return { lo, hi, t };
+  };
 
-  function marketCard(full) {
-    const syms = tel()?.symbols || [];
-    const list = full ? syms : syms.slice(0, 5);
-    const rows = list.map(s => { const d = s.digits ?? 5, dir = S.dir[s.symbol]; return `<tr>
-      <td><div class="sym">${esc(s.symbol)}</div><div class="px"><span class="${dir > 0 ? 'fu' : dir < 0 ? 'fd' : ''}">${fmtPx(s.bid, d)}</span> / ${fmtPx(s.ask, d)}</div>${structHtml(s)}</td>
-      <td><div class="num">${s.rsi == null ? '–' : s.rsi.toFixed(1)}</div><div class="muted" style="font-size:13px">ATR ${s.atr_points == null ? '–' : s.atr_points.toFixed(1)} pt</div></td>
-      <td class="num">${esc(s.spread)} <span class="muted">pt</span></td><td>${sigHtml(s)}</td></tr>`; }).join('');
-    return `<section class="card">
-      <div class="ph"><div><h2><span class="dot g"></span>Market Watch</h2><p>Semua simbol aktif · timeframe ${esc(tel()?.timeframe || '–')}</p></div></div>
-      <div class="tw"><table><thead><tr><th>Instrumen</th><th>RSI / ATR</th><th>Spread</th><th>Sinyal</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="4" class="empty">Belum ada simbol dari agent.</td></tr>`}</tbody></table></div>
-      <div class="pf"><span style="display:flex;gap:8px;align-items:center"><span class="dot g"></span>${syms.length} simbol terlihat di Market Watch</span>
-      ${full ? '' : `<button class="lnk" data-go="market">Buka semua simbol ${icon('i-arrow')}</button>`}</div></section>`;
+  // ---------- derived data ----------
+  const SYM_COLORS = ['var(--accent)', 'var(--gold)', 'var(--up)', 'var(--purple)', 'var(--cyan)', 'var(--down)'];
+  const coinHtml = (sym, big) => { const s = String(sym || '?'); const b = s.startsWith('BTC') ? '₿' : s.startsWith('XAU') ? 'Au' : s.slice(0, 2);
+    const col = s.startsWith('BTC') ? '#f7931a' : s.startsWith('XAU') ? 'var(--gold)' : s.startsWith('EUR') ? '#4c8df6' : s.startsWith('GBP') ? '#a78bfa' : s.startsWith('USD') ? '#22c55e' : '#7dd3fc';
+    return `<span class="coin" style="background:${col}${big ? ';width:38px;height:38px' : ''}">${esc(b)}</span>`; };
+  const regName = m => S.st?.eas.find(e => e.magic === m)?.name;
+  const regScope = m => S.st?.eas.find(e => e.magic === m)?.scope || '';
+  const eaLabel = m => m ? (regName(m) || 'EA ' + m) : 'Manual';
+  const basketId = (m, sym) => 'BKT-' + (m || 0);
+  function eaMagics() {
+    const set = new Set();
+    (S.st?.eas || []).forEach(e => set.add(e.magic));
+    (tel()?.positions || []).forEach(p => p.magic && set.add(p.magic));
+    (tel()?.protection?.disabled_magics || []).forEach(m => set.add(m));
+    [...S.statsDay, ...S.statsPer].forEach(e => e.magic && set.add(e.magic));
+    return [...set].sort((a, b) => a - b);
   }
-
-  function protCard() {
-    const p = tel()?.protection || {};
-    const lim = p.limit_amount || 0, used = p.loss_used || 0, st = p.entry_state, pct = p.baseline ? used / p.baseline * 100 : 0;
-    const online = S.st?.agent?.online;
-    const stLine = st === 'allowed' ? `<span class="dot g"></span>Entry baru diizinkan`
-      : st === 'paused' ? `<span class="dot y"></span><span class="warn">Entry dijeda manual</span>`
-      : st === 'blocked' ? `<span class="dot r"></span><span class="down">Batas tercapai, entry baru diblokir</span>` : `<span class="dot"></span>Status belum diketahui`;
-    let action;
-    if (S.pending) action = `<button class="btn pause" disabled>${icon('i-sync')}Menunggu konfirmasi agent…</button>`;
-    else if (S.confirm) action = `<div class="confirm"><span>${st === 'paused' ? 'Kirim perintah <b>lanjutkan entry</b> ke agent?' : 'Kirim perintah <b>jeda entry</b> ke semua EA di terminal ini? Posisi terbuka tidak ditutup.'}</span>
-        <div><button class="btn" data-act="cancel">Batal</button><button class="btn primary" data-act="send">Kirim perintah</button></div></div>`;
-    else if (st === 'blocked') action = `<button class="btn pause" disabled>${icon('i-lock')}Diblokir sampai reset harian</button>`;
-    else action = `<button class="btn pause" data-act="pause" ${can('control') && online ? '' : 'disabled'}>${icon(st === 'paused' ? 'i-play' : 'i-pause')}${st === 'paused' ? 'Lanjutkan entry' : 'Jeda entry'}</button>`;
-    const foot = !can('control') ? 'Peran Viewer tidak dapat mengirim perintah.' : !online ? 'Agent offline. Perintah dikirim setelah agent kembali.' : 'Perintah hanya dikirim melalui backend terautentikasi.';
-    return `<section class="card prot">
-      <div class="ph"><div><h2><span class="dot y"></span>Proteksi harian</h2><p>Baseline equity awal hari server${p.day_start ? ' · sejak ' + hhmm(p.day_start) : ''}</p></div>
-      <span class="active">${icon('i-shield')}AKTIF</span></div>
-      <div class="body">
-        <div class="state">${stLine}</div>
-        <div class="pgrid"><small>Equity awal hari</small><small>Batas rugi</small>
-          <span class="num">${fmtUsd(p.baseline)}</span><span class="num">${p.limit_pct == null ? '–' : p.limit_pct.toFixed(2) + '%'} <span class="muted">(${fmtUsd(lim)})</span></span></div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div class="prow"><span>Penggunaan batas harian</span><span class="num" style="color:var(--fg)">${pct.toFixed(2)}% <span class="muted">/ ${(p.limit_pct || 0).toFixed(2)}%</span></span></div>
-          <div class="bar ${st === 'blocked' ? 'crit' : ''}"><i style="width:${lim ? Math.min(100, used / lim * 100).toFixed(1) : 0}%"></i></div>
-          <div class="prow"><span>Rugi tercatat <b class="num" style="color:var(--fg)">${fmtUsd(used)}</b></span><span>Sisa batas <b class="num" style="color:var(--fg)">${fmtUsd(Math.max(0, lim - used))}</b></span></div>
-        </div>
-        <div class="note">${icon('i-info')}<span>Proteksi memblokir entry baru saat batas tercapai. Posisi aktif tetap mengikuti SL/TP masing-masing EA.</span></div>
-        ${action}<div class="center">${foot}</div>
-      </div></section>`;
+  const eaSymbol = m => {
+    const st = S.statsPer.find(e => e.magic === m) || S.statsDay.find(e => e.magic === m);
+    return Object.keys(st?.symbols || {})[0] || (tel()?.positions || []).find(p => p.magic === m)?.symbol || regScope(m).split(/[·,]/)[0].trim() || '–';
+  };
+  const eaOff = m => (tel()?.protection?.disabled_magics || []).includes(m);
+  function eaRun(m) {
+    const p = tel()?.protection, online = S.st?.agent?.online;
+    if (!online) return ['Offline', 'r'];
+    if (eaOff(m)) return ['Stopped', 'r'];
+    if (p?.entry_state === 'blocked') return ['Blocked', 'r'];
+    if (p?.entry_state === 'paused') return ['Paused', 'y'];
+    return ['Running', 'g'];
   }
-
-  function posCard() {
-    const ps = tel()?.positions || [];
-    const rows = ps.map(p => { const d = p.digits ?? 5; return `<tr>
-      <td><div class="pi"><span class="ic ${p.side === 'BUY' ? 'b' : 's'}">${icon(p.side === 'BUY' ? 'i-up' : 'i-down')}</span>
-        <div><b>${esc(p.symbol)}</b><span class="sd">${esc(p.side)}</span><small>${Number(p.volume).toFixed(2)} lot · SL ${p.sl ? fmtPx(p.sl, d) : '–'} · TP ${p.tp ? fmtPx(p.tp, d) : '–'}</small></div></div></td>
-      <td class="mg">${p.magic || 'Manual'}<small>${esc(eaName(p.magic) || p.comment || '')}</small></td>
-      <td class="r pl ${p.profit < 0 ? 'down' : 'up'}">${fmtUsd(p.profit, true)}</td></tr>`; }).join('');
-    return `<section class="card">
-      <div class="ph"><div><h2><span class="dot b"></span>Posisi terbuka <span class="badge">${ps.length}</span></h2><p>Teridentifikasi menurut akun, simbol, dan Magic Number</p></div></div>
-      <div class="tw"><table><thead><tr><th>Posisi</th><th>Magic Number</th><th class="r">P/L berjalan</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="3" class="empty">Tidak ada posisi terbuka.</td></tr>`}</tbody></table></div></section>`;
+  // Trades of the overview period filtered by the symbol picker, oldest first.
+  const ovTrades = () => S.trades.filter(t => S.sym === 'ALL' || t.symbol === S.sym).slice().reverse();
+  function tradeKpis(ts) {
+    const wins = ts.filter(t => t.net > 0), losses = ts.filter(t => t.net < 0);
+    const gp = sum(wins, t => t.net), gl = -sum(losses, t => t.net), net = sum(ts, t => t.net);
+    let cum = 0, peak = 0, dd = 0; const curve = [0];
+    ts.forEach(t => { cum += t.net; peak = Math.max(peak, cum); dd = Math.max(dd, peak - cum); curve.push(cum); });
+    const bal = tel()?.account?.balance || 0, startBal = bal - net;
+    return { n: ts.length, wins: wins.length, losses: losses.length, gp, gl, net, dd, curve,
+      wr: ts.length ? wins.length / ts.length * 100 : null, pf: gl ? gp / gl : null,
+      avgW: wins.length ? gp / wins.length : null, avgL: losses.length ? -gl / losses.length : null,
+      exp: ts.length ? net / ts.length : null, netPct: startBal > 0 ? net / startBal * 100 : null, ddPct: startBal > 0 ? dd / (startBal + peak) * 100 : null };
   }
-
-  function eaCard() {
-    const list = eaList();
-    return `<section class="card">
-      <div class="ph"><div><h2><span class="dot p"></span>Instansi EA <span class="badge">${list.length}</span></h2><p>Identitas strategi pada terminal ini</p></div>
-      <button class="btn ghost" data-go="eas">Kelola ${icon('i-arrow')}</button></div>
-      ${list.map(e => `<div class="ea"><span class="ic" style="color:var(--accent)">${icon('i-bot')}</span>
-        <div><b>${esc(e.name)}</b><small>${esc(e.scope || '')}</small></div><div class="st">${e.magic} ${eaStatus(e.magic)}</div></div>`).join('')
-        || `<div class="empty">Belum ada EA. Nama EA bisa didaftarkan di menu Instansi EA.</div>`}
-      <div class="lock">${icon('i-lock')}Akses kontrol dikelola berdasarkan role pengguna.</div></section>`;
+  function baskets() {
+    const map = new Map();
+    (tel()?.positions || []).forEach(p => {
+      const k = p.magic + '|' + p.symbol;
+      if (!map.has(k)) map.set(k, { magic: p.magic, symbol: p.symbol, pos: [] });
+      map.get(k).pos.push(p);
+    });
+    return [...map.values()].map(b => {
+      const today = S.deals.filter(d => d.magic === b.magic && d.symbol === b.symbol && ['OUT', 'INOUT', 'OUT_BY'].includes(d.entry));
+      const realized = sum(today, d => d.profit + d.swap + d.commission + d.fee);
+      const floating = sum(b.pos, p => p.profit), buy = sum(b.pos.filter(p => p.side === 'BUY'), p => p.volume), sell = sum(b.pos.filter(p => p.side === 'SELL'), p => p.volume);
+      const first = b.pos.reduce((a, p) => p.time < a.time ? p : a, b.pos[0]);
+      const sorted = b.pos.slice().sort((x, y) => x.time - y.time);
+      return { ...b, id: basketId(b.magic, b.symbol), lots: buy + sell, initLot: sorted[0].volume,
+        hedge: Math.max(buy, sell) ? Math.min(buy, sell) / Math.max(buy, sell) : 0, realized, floating, net: realized + floating,
+        age: (tel().server_time || 0) - first.time };
+    }).sort((a, b) => a.magic - b.magic);
   }
 
-  function chartCard(title, sub) {
-    const pts = S.eq.map(s => [s.ts, s.equity]);
-    const t = tel();
-    if (t && S.st.agent.received_at) pts.push([S.st.agent.received_at, t.account.equity]);
-    if (pts.length < 2) return `<section class="card"><div class="ph"><div><h2><span class="dot b"></span>${title}</h2><p>${sub}</p></div></div>
-      <div class="empty">Grafik muncul setelah beberapa menit telemetri terkumpul.</div></section>`;
-    const vals = pts.map(p => p[1]), base = t?.protection?.baseline;
-    if (base) vals.push(base);
-    const min = Math.min(...vals), max = Math.max(...vals), span = Math.max(max - min, 1);
-    const rawStep = span / 4, mag = Math.pow(10, Math.floor(Math.log10(rawStep))), step = [1, 2, 5, 10].map(m => m * mag).find(s => s >= rawStep);
-    const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
-    const t0 = pts[0][0], t1 = pts[pts.length - 1][0], W = 1000, H = 170;
-    const x = ts => (ts - t0) / Math.max(1, t1 - t0) * W, y = v => H - (v - lo) / (hi - lo || 1) * H;
-    const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('');
-    const ticks = []; for (let v = lo; v <= hi + step / 2; v += step) ticks.push(v);
-    const last = pts[pts.length - 1];
-    const xl = [0, .25, .5, .75].map(f => hhmm(t0 + (t1 - t0) * f));
-    return `<section class="card">
-      <div class="ph" style="border-bottom:0"><div><h2><span class="dot b"></span>${title}</h2><p>${sub}</p></div></div>
-      <div class="chart"><div class="cw">
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Grafik equity">
-          <defs><linearGradient id="eqg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--blue)" stop-opacity=".22"/><stop offset="1" stop-color="var(--blue)" stop-opacity="0"/></linearGradient></defs>
-          ${ticks.map(v => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('')}
-          ${base ? `<line x1="0" x2="${W}" y1="${y(base)}" y2="${y(base)}" stroke="var(--warn)" stroke-dasharray="4 4" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".6"/>` : ''}
-          <path d="${line}L${x(last[0])},${H}L0,${H}Z" fill="url(#eqg)"/>
-          <path d="${line}" fill="none" stroke="var(--blue)" stroke-width="2" vector-effect="non-scaling-stroke"/>
-        </svg>
-        ${ticks.map(v => `<span class="yl" style="top:${(y(v) / H * 100).toFixed(2)}%">${fmtAxis(v)}</span>`).join('')}
-        <span class="endpt" style="left:${(x(last[0]) / W * 100).toFixed(2)}%;top:${(y(last[1]) / H * 100).toFixed(2)}%" title="${fmtUsd(last[1])}"></span>
-      </div>
-      <div class="xl">${xl.map(l => `<span>${l}</span>`).join('')}<span>SEKARANG</span></div>
-      ${base ? `<div class="muted" style="font-size:12px;margin:8px 0 0 58px;display:flex;gap:8px;align-items:center"><span style="width:14px;border-top:1px dashed var(--warn)"></span>Equity awal hari ${fmtUsd(base)}</div>` : ''}
-      </div></section>`;
+  // ---------- top bar & sidebar ----------
+  function renderChrome() {
+    const t = tel(), a = t?.account, online = S.st?.agent?.online, conn = online && t?.terminal_connected;
+    const syms = [...new Set([...(t?.positions || []).map(p => p.symbol), ...S.statsPer.flatMap(e => Object.keys(e.symbols))])];
+    $('tbSyms').textContent = (syms.length ? syms.slice(0, 3).join(' • ') + ' • ' : '') + 'Real-Time • Automated';
+    $('tbConn').innerHTML = `<b><span class="dot ${conn ? 'g' : 'r'}"></span><span class="${conn ? 'up' : 'down'}">${conn ? 'MT5 Connected' : online ? 'MT5 terputus dari broker' : 'Agent offline'}</span></b>
+      <span>Server: ${esc(a?.server || '–')}</span><span>Login: ${esc(a?.login ?? '–')}${a ? ' · ' + (a.demo ? 'Demo' : 'Real') : ''}</span>`;
+    const m = (l, v, c = '') => `<div class="m"><small>${l}</small><b class="${c}">${v}</b></div>`;
+    $('tbAcct').innerHTML = a ? `<div class="m"><small class="ttl">Account (${esc(viewCur())})</small><select id="curSel" aria-label="Mata uang tampilan">${CURS.map(c => `<option value="${c}" ${c === viewCur() ? 'selected' : ''} ${usdPer(c) && usdPer(acctCur()) ? '' : 'disabled'}>${c}${c === 'IDR' && !idrRate() ? ' (atur kurs)' : ''}</option>`).join('')}</select></div>`
+      + m('Balance', fmtNum(a.balance)) + m('Equity', fmtNum(a.equity)) + m('Free Margin', fmtNum(a.free_margin)) + m('Margin', fmtNum(a.margin))
+      + m('Margin Level', a.margin_level ? a.margin_level.toFixed(2) + '%' : '–', a.margin_level && a.margin_level < 200 ? 'down' : 'up')
+      : `<span class="muted">Menunggu data akun dari agent…</span>`;
+    $('navPos').textContent = t?.positions?.length ?? 0;
+    $('navBkt').textContent = t ? baskets().length : 0;
+    $('verTag').textContent = 'agent ' + (t?.agent_version || '–');
+    $('symList').innerHTML = (t?.symbols || []).slice().sort((x, y) => (syms.includes(y.symbol) - syms.includes(x.symbol))).slice(0, 3).map(s => {
+      const ch = s.day_open ? (s.bid - s.day_open) / s.day_open * 100 : null, h = S.hist[s.symbol] || [];
+      return `<div class="symrow">${coinHtml(s.symbol)}<div><b>${esc(s.symbol)}</b><span class="num">${fmtPx(s.bid, s.digits)}</span><span class="num ${cls(ch)}" style="font-size:12.5px">${ch == null ? '' : pct(ch)}</span></div>${spark(h, ch < 0 ? 'var(--down)' : 'var(--up)', 64, 30, false)}</div>`;
+    }).join('') || '<span class="muted">–</span>';
+    document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.view === S.view));
+  }
+  function tickClock() {
+    const d = new Date(), off = -d.getTimezoneOffset() / 60;
+    $('tbDate').textContent = d.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    $('tbClock').textContent = d.toLocaleTimeString('id-ID') + ` (UTC${off >= 0 ? '+' : ''}${off})`;
   }
 
-  function agentCard() {
-    const a = S.st?.agent, t = tel(), age = ago();
-    const secure = location.protocol === 'https:';
-    return `<section class="card agent">
-      <div class="ph"><div><h2><span class="dot ${a?.online ? 'g' : 'r'}"></span>Status agent</h2><p>${esc(a?.agent_id || '–')} · terminal MT5</p></div>
-      ${a?.online ? `<span class="norm"><span class="dot"></span>NORMAL</span>` : `<span class="offline"><span class="dot"></span>OFFLINE</span>`}</div>
-      <div class="li">${icon('i-plug')}<span>Terminal MT5</span><span>${t ? (t.terminal_connected ? 'Terhubung' : 'Terputus dari broker') : '–'}</span></div>
-      <div class="li">${icon('i-shield')}<span>Kredensial agent</span><span>${a?.received_at ? 'Terverifikasi (HMAC)' : 'Belum pernah terhubung'}</span></div>
-      <div class="li">${icon('i-sync')}<span>Telemetri terakhir</span><span id="telAgo">${age == null ? '–' : Math.round(age) + ' detik lalu'}</span></div>
-      <div class="li">${icon('i-lock')}<span>Kanal kontrol</span><span class="${secure ? '' : 'warn'}">${secure ? 'HTTPS · RBAC' : 'HTTP · pasang HTTPS'}</span></div></section>`;
+  // ---------- overview widgets ----------
+  function filterBar() {
+    const syms = [...new Set([...S.trades.map(t => t.symbol), ...(tel()?.positions || []).map(p => p.symbol)])].sort();
+    const now = tel()?.server_time;
+    return `<section class="card fbar">
+      <label class="f"><span>Symbol</span><select id="fSym">${['ALL', ...syms].map(s => `<option value="${s}" ${s === S.sym ? 'selected' : ''}>${s === 'ALL' ? 'ALL' + (syms.length ? ' (' + syms.join(', ') + ')' : '') : esc(s)}</option>`).join('')}</select></label>
+      <label class="f"><span>Periode</span><select id="fDays">${Object.entries(PERIODS).map(([d, l]) => `<option value="${d}" ${+d === S.days ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <span class="range">${icon('i-cal')}<span class="mono">${S.tradesStart ? srvDay(S.tradesStart) : '–'}</span>${icon('i-arrow')}<span class="mono">${now ? srvDay(now) : '–'}</span></span>
+      <button class="btn primary" data-act="refresh">${icon('i-sync')}Refresh</button>
+      <span class="live"><span class="dot ${S.st?.agent?.online ? 'g' : 'r'}"></span><b class="${S.st?.agent?.online ? '' : 'down'}">${S.st?.agent?.online ? 'Live Update' : 'Agent offline'}</b>Last update: <span class="mono" id="lastUpd">${S.lastUpdate ? new Date(S.lastUpdate).toLocaleTimeString('id-ID') : '–'}</span></span>
+    </section>`;
   }
-
-  function kpis() {
-    const t = tel(); if (!t) return '';
-    // Today's P/L as MT5 shows it: closed deals since the day start plus open positions.
-    // Older agents send no "pl"; fall back to the equity change since the baseline.
-    const a = t.account, p = t.protection || {}, d = t.pl;
-    const pl = d ? d.realized + d.floating : p.baseline ? a.equity - p.baseline : null;
-    const plSub = d
-      ? `<span>Tertutup <span class="num ${d.realized < 0 ? 'down' : 'up'}">${fmtUsd(d.realized, true)}</span></span><span>Berjalan <span class="num ${d.floating < 0 ? 'down' : 'up'}">${fmtUsd(d.floating, true)}</span></span>`
-      : `<span class="num ${pl < 0 ? 'down' : 'up'}">${pl == null ? '–' : (pl / p.baseline * 100).toFixed(2) + '%'}</span> dari equity awal hari`;
-    const magics = new Set((t.positions || []).map(x => x.magic)).size;
+  function kpiRow() {
+    const k = tradeKpis(ovTrades());
     return `<div class="kpis">
-      <div class="card kpi"><div class="lbl">Equity akun ${icon('i-wallet')}</div><div class="val">${fmtUsd(a.equity)}</div><div class="sub"><span class="dot b"></span>Balance <span class="num">${fmtUsd(a.balance)}</span></div></div>
-      <div class="card kpi"><div class="lbl">P/L hari ini ${icon(pl < 0 ? 'i-down' : 'i-up')}</div><div class="val ${pl < 0 ? 'down' : 'up'}">${fmtUsd(pl, true)}</div><div class="sub">${plSub}</div></div>
-      <div class="card kpi"><div class="lbl">Margin bebas ${icon('i-coin')}</div><div class="val">${fmtUsd(a.free_margin)}</div><div class="sub"><span class="dot g"></span>Margin level <span class="num">${a.margin_level ? a.margin_level.toFixed(1) + '%' : '–'}</span></div></div>
-      <div class="card kpi"><div class="lbl">Posisi terbuka ${icon('i-layers')}</div><div class="val">${String((t.positions || []).length).padStart(2, '0')}<small>posisi</small></div><div class="sub"><span class="dot g"></span>${magics} Magic Number terpantau</div></div>
+      <div class="card kpi"><div class="lbl">Net P/L ${icon('i-info')}</div><div class="val ${cls(k.net)}">${fmtNum(k.net, true)}<small>${viewCur()}</small></div>
+        <div class="sub"><span class="${cls(k.net)}">${pct(k.netPct)}</span><span>${PERIODS[S.days]}</span></div></div>
+      <div class="card kpi"><div class="lbl">Win Rate</div><div class="val">${k.wr == null ? '–' : k.wr.toFixed(2) + '%'}</div><div class="vis">${ring(k.wr || 0)}</div>
+        <div class="sub"><span>${k.wins} Win / ${k.losses} Loss</span></div></div>
+      <div class="card kpi"><div class="lbl">Profit Factor ${icon('i-info')}</div><div class="val ${k.pf == null ? '' : k.pf >= 1 ? 'up' : 'down'}">${k.pf == null ? (k.gp ? '∞' : '–') : k.pf.toFixed(2)}</div><div class="vis">${spark(k.curve, 'var(--up)', 70, 40)}</div>
+        <div class="sub"><span>Gross Profit<b>${fmtNum(k.gp)}</b></span><span>Gross Loss<b>${fmtNum(k.gl)}</b></span></div></div>
+      <div class="card kpi"><div class="lbl">Max Drawdown ${icon('i-info')}</div><div class="val down">${k.ddPct == null ? '–' : k.ddPct.toFixed(2) + '%'}</div><div class="vis">${spark(k.curve.map((v, i, a) => v - Math.max(...a.slice(0, i + 1))), 'var(--down)', 70, 40)}</div>
+        <div class="sub"><span class="down">${fmtNum(-k.dd)} ${viewCur()}</span></div></div>
+      <div class="card kpi"><div class="lbl">Total Trades ${icon('i-info')}</div><div class="val">${k.n}</div>
+        <div class="sub"><span>Avg Win<b class="up">${fmtNum(k.avgW)}</b></span><span>Avg Loss<b class="down">${fmtNum(k.avgL)}</b></span></div></div>
+      <div class="card kpi"><div class="lbl">Expectancy ${icon('i-info')}</div><div class="val ${cls(k.exp)}">${fmtNum(k.exp)}</div><div class="vis">${spark(k.curve, 'var(--purple)', 70, 40, false)}</div>
+        <div class="sub"><span>${viewCur()} per trade</span></div></div>
     </div>`;
   }
-
-  function acctBar() {
-    const t = tel(), a = S.st?.agent, agents = S.st?.agents || [];
-    const sync = a?.online ? `<span class="dot g"></span>Sinkronisasi normal` : `<span class="dot r"></span><span class="down">Agent offline${ago() != null ? ', data terakhir ' + Math.round(ago()) + ' detik lalu' : ''}</span>`;
-    return `<section class="card acct">
-      <div class="it">${icon('i-bank')}<div><b>${t ? esc(t.account.login) + ' · ' + (t.account.demo ? 'Akun Demo' : 'Akun Real') : 'Belum ada data akun'}</b><small>${t ? esc(t.account.server) + ' • ' + esc(t.account.currency) : '–'}</small></div></div>
-      <span class="sep"></span>
-      <div class="it">${icon('i-shield')}<div><b>API terautentikasi</b><small>RBAC aktif · ${agents.length} agent terdaftar</small></div></div>
-      <span class="sync">${sync}</span></section>`;
+  function equityCard() {
+    const tab = S.eqTab;
+    let pts = S.eq.map(s => [s.ts, s.equity, s.balance]);
+    const t = tel();
+    if (t && S.st.agent.received_at) pts.push([S.st.agent.received_at, t.account.equity, t.account.balance]);
+    const head = `<div class="ph"><h2>Equity Curve</h2><div class="tools"><div class="seg">${[['equity', 'Equity'], ['balance', 'Balance'], ['dd', 'Drawdown']].map(([k, l]) => `<button data-eq="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div></div></div>`;
+    if (pts.length < 2) return `<section class="card">${head}<div class="empty">Grafik muncul setelah beberapa menit telemetri terkumpul.</div></section>`;
+    let series;
+    if (tab === 'dd') { let pk = -Infinity; series = [pts.map(p => { pk = Math.max(pk, p[1]); return [p[0], p[1] - pk]; })]; }
+    else if (tab === 'balance') series = [pts.map(p => [p[0], p[2]])];
+    else series = [pts.map(p => [p[0], p[1]]), pts.map(p => [p[0], p[2]])];
+    const all = series.flat().map(p => p[1]);
+    const { lo, hi, t: ticks } = niceTicks(Math.min(...all), Math.max(...all));
+    const t0 = pts[0][0], t1 = pts[pts.length - 1][0], W = 1000, H = 190;
+    const x = ts => (ts - t0) / Math.max(1, t1 - t0) * W, y = v => H - (v - lo) / (hi - lo || 1) * H;
+    const path = s => s.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('');
+    const main = series[0], col = tab === 'dd' ? 'var(--down)' : 'var(--up)';
+    const xl = [0, .2, .4, .6, .8, 1].map(f => { const ts = t0 + (t1 - t0) * f; return (t1 - t0) > 2 * 86400 ? new Date(ts * 1000).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); });
+    const last = main[main.length - 1];
+    return `<section class="card">${head}
+      <div class="chart">${ticks.map(v => `<span class="yl" style="top:${(4 + y(v) / H * 190).toFixed(1)}px">${fmtAxis(v)}</span>`).join('')}
+        <svg class="plot" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Grafik ${tab}">
+          <defs><linearGradient id="eqg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".3"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+          ${ticks.map(v => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('')}
+          <path d="${path(main)}L${x(last[0])},${H}L0,${H}Z" fill="url(#eqg)"/>
+          <path d="${path(main)}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke"/>
+          ${series[1] ? `<path d="${path(series[1])}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="6 5" vector-effect="non-scaling-stroke"/>` : ''}
+        </svg>
+        <div class="xl">${xl.map(l => `<span>${l}</span>`).join('')}</div>
+        ${tab === 'equity' ? `<div class="legend"><span><i></i>Equity ${fmtNum(t.account.equity)}</span><span><i class="dash"></i>Balance ${fmtNum(t.account.balance)}</span></div>` : ''}
+      </div></section>`;
+  }
+  function dailyCard() {
+    const tab = S.dpTab, ts = ovTrades(), start = S.tradesStart, now = tel()?.server_time;
+    const days = []; if (start && now) for (let d = start; d <= now; d += 86400) days.push(d);
+    const val = (d, f) => { const xs = ts.filter(t => t.close_time >= d && t.close_time < d + 86400); return tab === 'pl' ? sum(xs, t => t.net) : tab === 'vol' ? sum(xs, t => t.volume) : xs.length; };
+    const vals = days.map(d => val(d));
+    const head = `<div class="ph"><h2>Daily Performance</h2><div class="seg">${[['pl', 'P/L'], ['vol', 'Volume'], ['trades', 'Trades']].map(([k, l]) => `<button data-dp="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>`;
+    if (!days.length) return `<section class="card">${head}<div class="empty">Belum ada data.</div></section>`;
+    const { lo, hi, t: ticks } = niceTicks(Math.min(0, ...vals), Math.max(0, ...vals));
+    const W = 1000, H = 190, bw = W / days.length, y = v => H - (v - lo) / (hi - lo || 1) * H;
+    const fmt = v => tab === 'pl' ? fmtAxis(v) : tab === 'vol' ? v.toFixed(2) : String(v);
+    return `<section class="card">${head}
+      <div class="chart">${ticks.map(v => `<span class="yl" style="top:${(4 + y(v) / H * 190).toFixed(1)}px">${fmt(v)}</span>`).join('')}
+        <svg class="plot" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Performa harian">
+          ${ticks.map(v => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('')}
+          ${vals.map((v, i) => { const y0 = y(0), y1 = y(v); return `<rect x="${(i * bw + bw * .28).toFixed(1)}" width="${(bw * .44).toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" height="${Math.max(1, Math.abs(y1 - y0)).toFixed(1)}" fill="${v < 0 ? 'var(--down)' : tab === 'pl' ? 'var(--up)' : 'var(--accent)'}" rx="2"><title>${srvDay(days[i])}: ${tab === 'pl' ? fmtMoney(v, true) : fmt(v)}</title></rect>`; }).join('')}
+        </svg>
+        <div class="xl">${days.filter((_, i) => days.length <= 8 || i % Math.ceil(days.length / 8) === 0).map(d => `<span>${srvDay(d)}</span>`).join('')}</div>
+      </div></section>`;
+  }
+  function symPerfCard() {
+    const ts = ovTrades(), bal = tel()?.account?.balance || 0, net = sum(ts, t => t.net), startBal = bal - net;
+    const syms = [...new Set(ts.map(t => t.symbol))];
+    const rows = syms.map(s => { const xs = ts.filter(t => t.symbol === s); let c = 0; return { s, net: sum(xs, t => t.net), curve: [0, ...xs.map(t => c += t.net)] }; }).sort((a, b) => b.net - a.net);
+    return `<section class="card symperf"><div class="ph"><h2>Symbol Performance</h2><span class="muted" style="font-size:12.5px">Net P/L</span></div>
+      ${rows.map(r => `<div class="it">${coinHtml(r.s, true)}<div><b>${esc(r.s)}</b><div class="${cls(r.net)} num" style="font-size:12.5px">${startBal > 0 ? pct(r.net / startBal * 100) : ''}</div></div>
+        <div class="r"><b class="num ${cls(r.net)}">${fmtMoney(r.net, true)}</b><div>${spark(r.curve, r.net < 0 ? 'var(--down)' : 'var(--up)', 90, 34)}</div></div></div>`).join('') || '<div class="empty">Belum ada trade tertutup di periode ini.</div>'}</section>`;
+  }
+  function positionsTable(compact) {
+    const t = tel(), ps = (t?.positions || []).filter(p => !compact || S.sym === 'ALL' || p.symbol === S.sym), now = t?.server_time || 0;
+    const sym = s => t?.symbols?.find(x => x.symbol === s);
+    const rows = ps.map((p, i) => { const s = sym(p.symbol), d = p.digits ?? 2, cur = s ? (p.side === 'BUY' ? s.bid : s.ask) : null;
+      const move = cur && p.price_open ? (p.side === 'BUY' ? 1 : -1) * (cur - p.price_open) / p.price_open * 100 : null;
+      return `<tr><td>${i + 1}</td><td><b>${esc(p.symbol)}</b></td><td><span class="side-b ${p.side === 'BUY' ? 'buy' : 'sell'}">${p.side}</span></td>
+        <td class="r num">${Number(p.volume).toFixed(2)}</td><td class="r num">${fmtPx(p.price_open, d)}</td><td class="r num">${fmtPx(cur, d)}</td>
+        ${compact ? '' : `<td class="r num">${p.sl ? fmtPx(p.sl, d) : '–'}</td><td class="r num">${p.tp ? fmtPx(p.tp, d) : '–'}</td>`}
+        <td class="r num ${cls(p.profit)}">${fmtNum(p.profit, true)}</td><td class="r num ${cls(move)}">${pct(move)}</td>
+        <td class="num">${dur(now - p.time)}</td><td class="num" title="${esc(eaLabel(p.magic))}">${p.magic || 'Manual'}</td><td><span class="bkt">${basketId(p.magic, p.symbol)}</span></td></tr>`; }).join('');
+    return `<section class="card"><div class="ph"><h2>Open Positions (${ps.length}) <span class="chip g"><span class="dot g"></span>Real-Time</span></h2>
+      ${compact ? `<button class="btn icon outline" data-go="positions" aria-label="Buka semua posisi">${icon('i-expand')}</button>` : ''}</div>
+      <div class="tw"><table><thead><tr><th>#</th><th>Symbol</th><th>Type</th><th class="r">Volume</th><th class="r">Open Price</th><th class="r">Current Price</th>
+      ${compact ? '' : '<th class="r">SL</th><th class="r">TP</th>'}<th class="r">P/L (${viewCur()})</th><th class="r">P/L (%)</th><th>Duration</th><th>Magic</th><th>Basket</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="13" class="empty">Tidak ada posisi terbuka.</td></tr>`}</tbody></table></div>
+      ${compact ? '' : `<div class="pf">Posisi ditutup oleh EA masing-masing atau di MT5. Dashboard hanya bisa menghentikan entry baru per EA.</div>`}</section>`;
+  }
+  function basketCard(full) {
+    const bs = baskets().filter(b => S.basketSym === 'ALL' || b.symbol === S.basketSym), syms = [...new Set(baskets().map(b => b.symbol))];
+    const bal = tel()?.account?.balance || 1;
+    return `<section class="card"><div class="ph"><h2>Basket Monitor (${bs.length} Active)</h2>
+      <select id="fBkt" aria-label="Filter simbol basket">${['ALL', ...syms].map(s => `<option value="${s}" ${s === S.basketSym ? 'selected' : ''}>${s === 'ALL' ? 'All Symbols' : esc(s)}</option>`).join('')}</select></div>
+      ${bs.slice(0, full ? 99 : 2).map(b => { const ddPct = b.floating < 0 ? -b.floating / bal * 100 : 0; return `<div class="basket">
+        <div class="bh"><span class="ring-o" style="border-color:${b.net < 0 ? 'var(--warn)' : 'var(--up)'}"></span><b>${b.id}</b><span class="muted">${esc(b.symbol)} • Magic ${b.magic || 'Manual'} · ${esc(eaLabel(b.magic))}</span><span class="chip g">ACTIVE</span><span class="op">OP: ${b.pos.length}</span></div>
+        <div class="bgrid"><div><small>Initial Lot</small><b>${b.initLot.toFixed(2)}</b></div><div><small>Total Lots</small><b>${b.lots.toFixed(2)}</b></div><div><small>Hedge Ratio</small><b>${b.hedge.toFixed(2)}</b></div>
+          <div><small>Realized P/L</small><b class="${cls(b.realized)}">${fmtNum(b.realized, true)}</b></div><div><small>Floating P/L</small><b class="${cls(b.floating)}">${fmtNum(b.floating, true)}</b></div><div><small>Net P/L</small><b class="${cls(b.net)}">${fmtNum(b.net, true)}</b></div></div>
+        <div class="bfoot"><div class="bar ${ddPct > 2 ? 'crit' : ddPct > 1 ? 'warn' : ''}" style="flex:1"><i style="width:${Math.min(100, Math.max(4, b.pos.length / 8 * 100))}%"></i></div>
+          <span>Floating DD: <b class="num ${b.floating < 0 ? 'down' : ''}">${b.floating < 0 ? fmtNum(b.floating) + ' (' + ddPct.toFixed(1) + '%)' : '0'}</b></span><span>Duration: ${dur(b.age)}</span></div></div>`; }).join('')
+      || '<div class="empty">Tidak ada basket aktif.</div>'}
+      ${!full && bs.length > 2 ? `<div class="pf"><button class="btn sm outline" data-go="basket">Lihat ${bs.length - 2} basket lainnya</button></div>` : ''}</section>`;
+  }
+  function historyTable(trades, opts = {}) {
+    const syms = [...new Set(trades.map(t => t.symbol))].sort();
+    const q = S.histQ.trim().toLowerCase();
+    const list = trades.filter(t => (S.histSym === 'ALL' || t.symbol === S.histSym)
+      && (!q || [t.position_id, t.symbol, basketId(t.magic), t.magic, eaLabel(t.magic)].join(' ').toLowerCase().includes(q)));
+    const rows = list.slice(0, opts.limit || 500).map((t, i) => { const d = symDigits(t.symbol); return `<tr><td>${i + 1}</td><td class="num">${srvDayTime(t.close_time)}</td><td><b>${esc(t.symbol)}</b></td>
+      <td><span class="side-b ${t.side === 'BUY' ? 'buy' : 'sell'}">${t.side}</span></td><td class="r num">${t.volume.toFixed(2)}</td>
+      <td class="r num">${fmtPx(t.open_price, d)}</td><td class="r num">${fmtPx(t.close_price, d)}</td><td class="r num ${cls(t.profit)}">${fmtNum(t.profit, true)}</td>
+      <td class="r num">${fmtNum(t.commission)}</td><td class="r num">${fmtNum(t.swap)}</td><td class="r num ${cls(t.net)}"><b>${fmtNum(t.net, true)}</b></td>
+      <td class="num">${t.magic || 'Manual'}</td><td><span class="bkt">${basketId(t.magic)}</span></td></tr>`; }).join('');
+    return `<section class="card"><div class="ph"><h2>Trade History (${list.length})</h2><div class="tools">
+      <div class="seg">${['ALL', ...syms].map(s => `<button data-hsym="${esc(s)}" class="${s === S.histSym ? 'on' : ''}">${esc(s)}</button>`).join('')}</div>
+      ${opts.days ? `<select id="hDays" aria-label="Periode riwayat">${[1, 7, 30, 90].map(d => `<option value="${d}" ${d === S.histDays ? 'selected' : ''}>${d === 1 ? 'Hari ini' : d + ' hari'}</option>`).join('')}</select>` : ''}
+      <input id="hQ" placeholder="Cari ticket, symbol, basket…" value="${esc(S.histQ)}" aria-label="Cari trade" style="min-width:220px">
+      ${opts.limit ? `<button class="btn icon outline" data-go="history" aria-label="Buka riwayat lengkap">${icon('i-expand')}</button>` : ''}</div></div>
+      <div class="tw"><table><thead><tr><th>#</th><th>Time (server)</th><th>Symbol</th><th>Type</th><th class="r">Volume</th><th class="r">Open Price</th><th class="r">Close Price</th>
+      <th class="r">P/L (${viewCur()})</th><th class="r">Comm</th><th class="r">Swap</th><th class="r">Net P/L</th><th>Magic</th><th>Basket</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="13" class="empty">Belum ada trade tertutup${S.deals.length || S.trades.length ? '' : '. Riwayat terisi setelah agent 0.13 menyinkronkan deal'}.</td></tr>`}</tbody></table></div></section>`;
+  }
+  function riskCard() {
+    const t = tel(), a = t.account, p = t.protection || {}, pl = t.pl;
+    const daily = pl ? pl.realized + pl.floating : p.baseline ? a.equity - p.baseline : null;
+    const used = p.limit_pct && p.baseline ? Math.max(0, -Math.min(0, daily ?? 0)) / p.baseline * 100 : 0;
+    const exposure = sum(t.positions || [], x => x.volume), floating = sum(t.positions || [], x => x.profit);
+    const ml = a.margin_level, mlState = !ml ? ['–', ''] : ml < (a.margin_call || 100) * 1.5 ? ['Danger', 'r'] : ml < 300 ? ['Watch', 'y'] : ['Safe', 'g'];
+    return `<section class="card"><div class="ph"><h2>Risk Center</h2><span class="muted" style="font-size:12.5px">Daily Baseline (${p.day_start ? srvDay(p.day_start) : '–'})</span>
+      <span class="chip ${p.entry_state === 'blocked' ? 'r' : p.entry_state === 'paused' ? 'y' : 'g'}">${p.entry_state === 'blocked' ? 'Blocked' : p.entry_state === 'paused' ? 'Paused' : 'Valid'}</span></div>
+      <div class="rgrid"><div><small>Baseline Equity</small><b>${fmtNum(p.baseline)}</b></div><div><small>Current Equity</small><b>${fmtNum(a.equity)}</b></div>
+        <div><small>Daily P/L</small><b class="${cls(daily)}">${fmtNum(daily, true)}</b> <span class="num ${cls(daily)}" style="font-size:12px">(${p.baseline ? pct(daily / p.baseline * 100) : '–'})</span></div></div>
+      <div style="padding:0 16px 12px"><div class="bar ${used >= (p.limit_pct || 3) ? 'crit' : used >= (p.limit_pct || 3) * .66 ? 'warn' : ''}"><i style="width:${Math.min(100, used / (p.limit_pct || 3) * 100).toFixed(1)}%"></i></div>
+        <div class="prow" style="margin-top:6px"><span>Daily Drawdown ${used.toFixed(2)}%</span><span>Limit: ${p.limit_pct == null ? '–' : p.limit_pct.toFixed(2) + '%'} (${fmtNum(p.limit_amount)})</span></div></div>
+      <div class="rmini"><div><small>Margin Level</small><b class="${mlState[1] === 'g' ? 'up' : mlState[1] === 'r' ? 'down' : 'warn'}">${ml ? ml.toFixed(2) + '%' : '–'}</b> <span class="chip ${mlState[1]}" style="font-size:11px;padding:1px 6px">${mlState[0]}</span></div>
+        <div><small>Total Exposure</small><b>${exposure.toFixed(2)} lot</b></div><div><small>Floating P/L</small><b class="${cls(floating)}">${fmtNum(floating, true)}</b></div>
+        <div><small>Sisa batas harian</small><b>${fmtNum(Math.max(0, (p.limit_amount || 0) - (p.loss_used || 0)))}</b></div>
+        <div><small>Margin Call Level</small><b>${a.margin_call != null ? a.margin_call.toFixed(2) + '%' : '–'}</b></div><div><small>Stop Out Level</small><b>${a.stop_out != null ? a.stop_out.toFixed(2) + '%' : '–'}</b></div></div></section>`;
   }
 
-  function emptyState() {
-    return `<section class="card"><div class="empty" style="padding:40px 18px;display:flex;flex-direction:column;gap:8px;align-items:center">
-      <b style="color:var(--fg);font-size:16px">Menunggu telemetri pertama dari agent</b>
-      <span>${(S.st?.agents || []).length ? 'Pasang AlgoDeskAgent di terminal MT5 dengan URL backend, ID agent, dan rahasianya.' : 'Belum ada agent terdaftar. Jalankan <span class="mono">python -m algodesk.cli create-agent vps-01</span> di server.'}</span>
-    </div></section>`;
+  // ---------- EA Expert page ----------
+  function eaCards() {
+    const ms = eaMagics(), ctl = can('control'), online = S.st?.agent?.online, p = tel()?.protection || {}, base = p.baseline;
+    return `<div class="eacards">${ms.map(m => {
+      const st = S.statsDay.find(e => e.magic === m), pos = (tel()?.positions || []).filter(x => x.magic === m);
+      const floating = sum(pos, x => x.profit), today = (st?.net || 0) + floating, [run, rc] = eaRun(m), off = eaOff(m);
+      const tags = regScope(m).split(/[·,]/).map(s => s.trim()).filter(Boolean), sym = eaSymbol(m);
+      if (!tags.some(x => x === sym) && sym !== '–') tags.unshift(sym);
+      const curve = [0, ...(st?.curve || []).map(c => c[1])]; if (floating) curve.push(curve[curve.length - 1] + floating);
+      if (S.edit === m) return `<section class="card eac"><form data-eaform="${m}"><b>Edit EA · Magic ${m}</b>
+        <label>Nama EA<input id="ean-${m}" value="${esc(regName(m) || '')}" required maxlength="80"></label>
+        <label>Tag (pisahkan dengan ·), mis. XAUUSDc · M15 · Trend + SNR<input id="eas-${m}" value="${esc(regScope(m))}" maxlength="120"></label>
+        <div class="inline"><button class="btn primary" type="submit">Simpan</button><button class="btn outline" type="button" data-act="editcancel">Batal</button></div></form></section>`;
+      return `<section class="card eac">
+        <div class="h"><div><b>${esc(eaLabel(m))}</b><small>${regName(m) ? 'Magic ' + m : 'Belum diberi nama'}</small></div>
+          <div class="st"><button class="sw ${off ? '' : 'on'}" data-magic="${m}" aria-label="${off ? 'Aktifkan' : 'Nonaktifkan'} EA ${m}" ${ctl && !S.pending ? '' : 'disabled'}>${off ? 'OFF' : 'ON'}</button><span class="run ${rc}">${run}</span></div></div>
+        <div class="tags">${tags.map((x, i) => `<span class="chip ${i === 0 ? 'gold' : ''}">${esc(x)}</span>`).join('')}</div>
+        <div class="kv"><span>Magic Number</span><b>${m}</b><span>Posisi terbuka</span><b>${pos.length}</b><span>Lot terbuka</span><b>${sum(pos, x => x.volume).toFixed(2)}</b>
+          <span>Floating P/L</span><b class="${cls(floating)}">${fmtNum(floating, true)}</b><span>Daily Loss Limit</span><b>${p.limit_pct == null ? '–' : p.limit_pct.toFixed(2) + '%'}</b></div>
+        <div class="estat"><div><small>Today P/L</small><b class="${cls(today)}">${fmtNum(today, true)}</b><em class="${cls(today)}">${base ? pct(today / base * 100) : ''}</em></div>
+          <div><small>Total Trades</small><b>${st?.trades ?? 0}</b></div><div><small>Win Rate</small><b>${st ? st.win_rate.toFixed(1) + '%' : '0.0%'}</b></div>
+          <div><small>Profit Factor</small><b>${st ? (st.profit_factor == null ? (st.gross_profit ? '∞' : '0.00') : st.profit_factor.toFixed(2)) : '0.00'}</b></div></div>
+        <div class="spk">${spark(curve, today < 0 ? 'var(--down)' : off ? 'var(--muted)' : 'var(--up)', 300, 44)}</div>
+        <div class="btns"><button class="btn primary" data-detail="${m}">Detail</button><button class="btn outline" data-edit="${m}" ${can('admin') ? '' : 'disabled'}>Edit</button>
+          ${off ? `<button class="btn green" data-magic="${m}" ${ctl && online && !S.pending ? '' : 'disabled'}>Start EA</button>` : `<button class="btn red" data-magic="${m}" ${ctl && online && !S.pending ? '' : 'disabled'}>Stop EA</button>`}</div>
+      </section>`; }).join('') || '<section class="card"><div class="empty">Belum ada EA terdeteksi. EA muncul otomatis saat punya posisi atau riwayat trade, atau daftarkan Magic Number di bawah.</div></section>'}
+      </div>${can('admin') ? `<section class="card"><form id="eaAdd" class="inline" style="padding:10px 16px"><b style="margin-right:6px">Daftarkan EA</b>
+        <input id="eaAddMagic" type="number" min="1" required placeholder="Magic number" aria-label="Magic number"><input id="eaAddName" required maxlength="80" placeholder="Nama EA, mis. SNR Structure M15" aria-label="Nama EA" style="min-width:260px">
+        <button class="btn primary sm" type="submit">Daftarkan</button><span class="muted" style="font-size:12.5px">EA dengan posisi atau riwayat trade muncul otomatis; beri nama lewat tombol Edit.</span></form></section>` : ''}`;
+  }
+  function perfSummary() {
+    const per = S.statsPer, ms = eaMagics(), now = tel()?.server_time;
+    return `<section class="card"><div class="ph"><h2>EA Performance Summary</h2><div class="tools">
+      <div class="seg">${[['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']].map(([k, l]) => `<button data-perf="${k}" class="${S.perfTab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <span class="chip">${icon('i-cal')}${S.perStart ? srvDay(S.perStart) + ' – ' : ''}${now ? srvDay(now) : '–'}</span></div></div>
+      <div class="tw"><table><thead><tr><th>EA Name</th><th>Symbol</th><th>Status</th><th class="r">Trades</th><th class="r">Win Rate</th><th class="r">Net P/L (${viewCur()})</th><th class="r">Drawdown</th><th class="r">Last Trade</th></tr></thead><tbody>
+      ${ms.map(m => { const e = per.find(x => x.magic === m), off = eaOff(m); return `<tr><td><b>${esc(eaLabel(m))}</b></td><td>${esc(eaSymbol(m))}</td>
+        <td><span class="${off ? 'muted' : 'up'}" style="display:inline-flex;gap:6px;align-items:center"><span class="dot ${off ? 'm' : 'g'}"></span>${off ? 'OFF' : 'ON'}</span></td>
+        <td class="r num">${e?.trades ?? 0}</td><td class="r num">${e ? e.win_rate.toFixed(1) : '0.0'}%</td><td class="r num ${cls(e?.net)}">${fmtNum(e?.net ?? 0, true)}</td>
+        <td class="r num ${e?.max_drawdown ? 'down' : ''}">${e?.max_drawdown && e.max_drawdown_pct != null ? '−' + e.max_drawdown_pct.toFixed(1) + '%' : '0.0%'}</td><td class="r num">${e ? srvDayTime(e.last_trade) : '–'}</td></tr>`; }).join('')
+      || '<tr><td colspan="8" class="empty">Belum ada EA.</td></tr>'}</tbody></table></div></section>`;
+  }
+  function allocCard() {
+    const ms = eaMagics(), by = {};
+    ms.forEach(m => { const s = eaSymbol(m); by[s] = (by[s] || 0) + 1; });
+    const rows = Object.entries(by).sort((a, b) => b[1] - a[1]), n = ms.length || 1;
+    const r = 56, c = 2 * Math.PI * r; let off = 0;
+    const arcs = rows.map(([s, k], i) => { const len = k / n * c, el = `<circle cx="75" cy="75" r="${r}" fill="none" stroke="${SYM_COLORS[i % SYM_COLORS.length]}" stroke-width="16" stroke-dasharray="${Math.max(0, len - 3).toFixed(1)} ${c.toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}" transform="rotate(-90 75 75)"/>`; off += len; return el; }).join('');
+    return `<section class="card"><div class="ph"><h2>EA Allocation per Symbol</h2></div>
+      <div class="donut"><svg viewBox="0 0 150 150" aria-label="Alokasi EA per simbol"><circle cx="75" cy="75" r="${r}" fill="none" stroke="var(--panel-3)" stroke-width="16"/>${arcs}
+        <text x="75" y="72" text-anchor="middle" fill="var(--fg)" font-size="26" font-weight="700" font-family="var(--sans)">${ms.length}</text><text x="75" y="94" text-anchor="middle" fill="var(--fg-2)" font-size="12" font-family="var(--sans)">Total EA</text></svg>
+      <ul>${rows.map(([s, k], i) => `<li><span class="dot" style="color:${SYM_COLORS[i % SYM_COLORS.length]};width:12px;height:12px"></span><b>${esc(s)}</b><span class="muted">${k} EA</span><span class="num">${Math.round(k / n * 100)}%</span></li>`).join('') || '<li class="muted">–</li>'}</ul></div></section>`;
+  }
+  function logEvents() {
+    const ev = [];
+    S.deals.forEach(d => {
+      if (d.type === 'BUY' || d.type === 'SELL') {
+        const net = d.profit + d.swap + d.commission + d.fee, dg = symDigits(d.symbol);
+        const msg = d.entry === 'IN' ? `Open ${d.type} ${d.volume.toFixed(2)} at ${fmtPx(d.price, dg)} (Ticket: ${d.position_id})`
+          : `Close ${d.type} ${d.volume.toFixed(2)} at ${fmtPx(d.price, dg)} | Profit: <span class="${cls(net)}">${fmtMoney(net, true)}</span>`;
+        ev.push({ ts: d.time, magic: d.magic, symbol: d.symbol, ev: 'TRADE', msg });
+      } else ev.push({ ts: d.time, magic: null, symbol: '–', ev: 'INFO', msg: `${esc(d.type)} ${fmtMoney(d.profit, true)}${d.comment ? ' · ' + esc(d.comment) : ''}` });
+    });
+    const off = srvOffset(), start = S.dealsStart || 0;
+    S.cmds.filter(c => c.issued_at + off >= start).forEach(c => {
+      const ts = Math.round(c.issued_at + off), who = esc(c.issued_by || 'pengguna');
+      const failed = c.status === 'failed' || c.status === 'expired';
+      const kind = failed ? 'ERROR' : c.type === 'disable_magic' || c.type === 'pause_entry' ? 'WARN' : 'INFO';
+      const what = c.type === 'disable_magic' ? 'EA stopped by ' + who : c.type === 'enable_magic' ? 'EA started by ' + who : `${CMD_LABEL[c.type] || esc(c.type)}${c.value != null ? ' ' + c.value + '%' : ''} oleh ${who}`;
+      ev.push({ ts, magic: c.magic || null, symbol: c.magic ? eaSymbol(c.magic) : '–', ev: kind, msg: what + (failed ? ` (${STATUS_LABEL[c.status]})` : '') });
+    });
+    return ev.sort((a, b) => b.ts - a.ts);
+  }
+  function logsCard() {
+    const all = logEvents(), syms = [...new Set(all.map(e => e.symbol).filter(s => s !== '–'))];
+    const list = all.filter(e => (!S.logEa || String(e.magic) === S.logEa) && (!S.logSym || e.symbol === S.logSym) && (!S.logEv || e.ev === S.logEv));
+    return `<section class="card"><div class="ph"><h2>EA Logs (Today)</h2><div class="tools">
+      <select id="lEa" aria-label="Filter EA"><option value="">All EA</option>${eaMagics().map(m => `<option value="${m}" ${String(m) === S.logEa ? 'selected' : ''}>${esc(eaLabel(m))}</option>`).join('')}</select>
+      <select id="lSym" aria-label="Filter simbol"><option value="">All Symbol</option>${syms.map(s => `<option ${s === S.logSym ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+      <select id="lEv" aria-label="Filter event"><option value="">All Event</option>${['TRADE', 'INFO', 'WARN', 'ERROR'].map(s => `<option ${s === S.logEv ? 'selected' : ''}>${s}</option>`).join('')}</select>
+      <button class="btn sm outline" data-act="logclear">Clear</button></div></div>
+      <div class="tw" style="max-height:330px;overflow:auto"><table><thead><tr><th>Time</th><th>EA Name</th><th>Symbol</th><th>Event</th><th>Message</th></tr></thead><tbody>
+      ${list.slice(0, 200).map(e => `<tr><td class="num">${srvHms(e.ts)}</td><td>${e.magic ? esc(eaLabel(e.magic)) : e.magic === 0 ? 'Manual' : '–'}</td><td>${esc(e.symbol)}</td><td><span class="ev ${e.ev}">${e.ev}</span></td><td>${e.msg}</td></tr>`).join('')
+      || '<tr><td colspan="5" class="empty">Belum ada aktivitas hari ini.</td></tr>'}</tbody></table></div></section>`;
+  }
+  function resourceCard() {
+    const t = tel(), term = t?.terminal || {}, a = S.st?.agent;
+    const mem = term.memory_mb, memPct = mem && term.memory_total_mb ? mem / term.memory_total_mb * 100 : 0;
+    return `<section class="card"><div class="ph"><h2>EA Resource &amp; Status</h2><button class="btn sm outline" data-act="refresh">${icon('i-sync')}Refresh</button></div>
+      <div class="res"><div><small>Ping broker</small><b>${term.ping_ms != null ? term.ping_ms.toFixed(0) + ' ms' : '–'}</b><div class="bar ${term.ping_ms > 150 ? 'warn' : ''}"><i style="width:${Math.min(100, (term.ping_ms || 0) / 3)}%"></i></div></div>
+        <div><small>Memory (MT5)</small><b>${mem != null ? mem + ' MB' : '–'}</b><div class="bar"><i style="width:${Math.max(2, memPct).toFixed(1)}%"></i></div></div>
+        <div><small>Terminal Status</small><b class="${a?.online && t?.terminal_connected ? 'up' : 'down'}" style="font-family:var(--sans);display:flex;gap:8px;align-items:center"><span class="dot"></span>${a?.online ? (t?.terminal_connected ? 'Connected' : 'Broker terputus') : 'Offline'}</b>
+          <small>Algo Trading: ${term.trade_allowed == null ? '–' : term.trade_allowed ? '<span class="up">ON</span>' : '<span class="down">OFF</span>'}</small></div></div>
+      <div class="tw"><table><thead><tr><th>EA Name</th><th class="r">Posisi</th><th class="r">Trades</th><th class="r">Last trade</th><th>Status</th></tr></thead><tbody>
+      ${eaMagics().map(m => { const [run, rc] = eaRun(m), st = S.statsDay.find(e => e.magic === m) || S.statsPer.find(e => e.magic === m); return `<tr><td>${esc(eaLabel(m))}</td>
+        <td class="r num">${(t?.positions || []).filter(p => p.magic === m).length}</td><td class="r num">${S.statsDay.find(e => e.magic === m)?.trades ?? 0}</td>
+        <td class="r num">${st ? srvDayTime(st.last_trade) : '–'}</td><td class="${rc === 'g' ? 'up' : rc === 'y' ? 'warn' : 'down'}">${run}</td></tr>`; }).join('') || '<tr><td colspan="5" class="empty">–</td></tr>'}
+      </tbody></table></div></section>`;
+  }
+  function detailModal() {
+    if (S.detail == null) return '';
+    const m = S.detail, ts = S.detailTrades, k = tradeKpis(ts.slice().reverse());
+    return `<div class="modal" data-act="closemodal"><section class="card" role="dialog" aria-label="Detail EA">
+      <div class="ph"><div><h2>${esc(eaLabel(m))} · Magic ${m}</h2><p>Trade tertutup 30 hari terakhir: ${k.n} trade, win rate ${k.wr == null ? '–' : k.wr.toFixed(1) + '%'}, net <span class="${cls(k.net)}">${fmtMoney(k.net, true)}</span>, PF ${k.pf == null ? '–' : k.pf.toFixed(2)}</p></div>
+        <button class="btn icon outline" data-act="closemodal" aria-label="Tutup">${icon('i-x')}</button></div>
+      <div class="tw"><table><thead><tr><th>Close time</th><th>Symbol</th><th>Type</th><th class="r">Volume</th><th class="r">Open</th><th class="r">Close</th><th class="r">Net P/L</th></tr></thead><tbody>
+      ${ts.map(t => `<tr><td class="num">${srvDayTime(t.close_time)}</td><td>${esc(t.symbol)}</td><td><span class="side-b ${t.side === 'BUY' ? 'buy' : 'sell'}">${t.side}</span></td><td class="r num">${t.volume.toFixed(2)}</td>
+        <td class="r num">${fmtPx(t.open_price, symDigits(t.symbol))}</td><td class="r num">${fmtPx(t.close_price, symDigits(t.symbol))}</td><td class="r num ${cls(t.net)}">${fmtNum(t.net, true)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Belum ada trade tertutup.</td></tr>'}
+      </tbody></table></div></section></div>`;
   }
 
-  const HEADS = {
-    overview: ['Monitoring akun', 'Ringkasan', 'Pantau kondisi akun, simbol, dan perlindungan risiko dalam satu tempat.', 'Ikhtisar trading'],
-    market: ['Data pasar', 'Market Watch', 'Harga, struktur pasar, RSI/ATR, dan sinyal untuk simbol di Market Watch terminal.', 'Market Watch'],
-    positions: ['Eksekusi', 'Posisi', 'Posisi terbuka dikelompokkan menurut Magic Number.', 'Posisi'],
-    eas: ['Strategi', 'Instansi EA', 'Beri nama Magic Number dan aktifkan atau nonaktifkan entry per EA.', 'Instansi EA'],
-    perf: ['Analitik', 'Performa', 'Perkembangan equity dari telemetri agent.', 'Performa'],
-    users: ['Administrasi', 'Pengguna & RBAC', 'Siapa yang bisa melihat dan siapa yang bisa mengirim perintah ke agent.', 'Pengguna & RBAC'],
-    settings: ['Administrasi', 'Pengaturan', 'Batas rugi harian dan log perintah ke agent.', 'Pengaturan'],
-  };
-  function head() {
-    const [eb, h, p] = HEADS[S.view];
-    return `<div class="head"><div><div class="eyebrow">${eb}</div><h1>${h}</h1><p>${p}</p></div>
-      <div class="preview"><select id="curSel" aria-label="Mata uang tampilan">${CURS.map(c => `<option value="${c}" ${c === viewCur() ? 'selected' : ''} ${usdPer(c) && usdPer(acctCur()) ? '' : 'disabled'}>${c}${c === 'IDR' && !idrRate() ? ' (atur kurs)' : ''}</option>`).join('')}</select>
-        <span class="mono" style="display:flex;gap:6px;align-items:center">${icon('i-clock')}<span id="clock">${new Date().toLocaleTimeString('id-ID')}</span></span></div></div>`;
+  // ---------- other pages ----------
+  const structTxt = s => s.structure === 'bull' ? '<b class="up">HH · HL</b> Bullish' : s.structure === 'bear' ? '<b class="down">LH · LL</b> Bearish' : '<b>MIXED</b> Netral';
+  function marketCard() {
+    const syms = tel()?.symbols || [];
+    return `<section class="card"><div class="ph"><h2>Market Watch</h2><span class="muted">Timeframe ${esc(tel()?.timeframe || '–')} · ${syms.length} simbol</span></div>
+      <div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Bid</th><th class="r">Ask</th><th class="r">Change</th><th class="r">Spread</th><th class="r">RSI</th><th class="r">ATR</th><th>Struktur</th><th>Sinyal</th><th></th></tr></thead><tbody>
+      ${syms.map(s => { const ch = s.day_open ? (s.bid - s.day_open) / s.day_open * 100 : null; return `<tr><td><b>${esc(s.symbol)}</b></td><td class="r num">${fmtPx(s.bid, s.digits)}</td><td class="r num">${fmtPx(s.ask, s.digits)}</td>
+        <td class="r num ${cls(ch)}">${pct(ch)}</td><td class="r num">${s.spread} pt</td><td class="r num">${s.rsi == null ? '–' : s.rsi.toFixed(1)}</td><td class="r num">${s.atr_points == null ? '–' : s.atr_points.toFixed(0) + ' pt'}</td>
+        <td>${structTxt(s)}</td><td>${s.signal === 'BUY' ? '<span class="side-b buy">BUY</span>' : s.signal === 'SELL' ? '<span class="side-b sell">SELL</span>' : '<span class="muted">–</span>'}</td>
+        <td style="width:90px">${spark(S.hist[s.symbol] || [], ch < 0 ? 'var(--down)' : 'var(--up)', 80, 24, false)}</td></tr>`; }).join('') || '<tr><td colspan="10" class="empty">Belum ada simbol dari agent.</td></tr>'}
+      </tbody></table></div></section>`;
   }
-
-  function eaManage() {
-    const list = eaList(), admin = can('admin'), ctl = can('control');
-    return `<section class="card">${list.map(e => `<div class="ea" style="flex-wrap:wrap">
-        <span class="ic" style="color:var(--accent)">${icon('i-bot')}</span>
-        ${admin ? `<form class="inline" data-eaform="${e.magic}" style="flex:1;min-width:0">
-            <input id="ean-${e.magic}" value="${esc(e.known ? e.name : '')}" placeholder="Nama EA" aria-label="Nama EA ${e.magic}" required maxlength="80">
-            <input id="eas-${e.magic}" value="${esc(e.known ? e.scope : '')}" placeholder="Simbol · TF · catatan" aria-label="Keterangan EA ${e.magic}" maxlength="120">
-            <button class="btn" type="submit">Simpan</button></form>`
-          : `<div><b>${esc(e.name)}</b><small>${esc(e.scope || '')}</small></div>`}
-        <div class="st">${e.magic} ${eaStatus(e.magic)}
-          <button class="toggle ${(tel()?.protection?.disabled_magics || []).includes(e.magic) ? '' : 'on'}" data-magic="${e.magic}" aria-label="Aktifkan entry magic ${e.magic}" ${ctl && !S.pending ? '' : 'disabled'}></button></div></div>`).join('')}
-      ${admin ? `<form class="inline" id="eaAdd" style="padding:14px 18px;border-top:1px solid var(--line-soft)">
-          <input id="eaAddMagic" type="number" min="1" placeholder="Magic number" required aria-label="Magic number baru">
-          <input id="eaAddName" placeholder="Nama EA, mis. VE5" required maxlength="80" aria-label="Nama EA baru">
-          <button class="btn primary" type="submit">Daftarkan EA</button></form>` : ''}
-      <div class="lock">${icon('i-lock')}${ctl ? 'Menonaktifkan EA hanya menghentikan entry baru dari Magic Number tersebut.' : 'Peran Viewer hanya dapat melihat status EA.'}</div></section>`;
+  function protControl() {
+    const p = tel()?.protection || {}, st = p.entry_state, online = S.st?.agent?.online;
+    let action;
+    if (S.pending) action = `<button class="btn" disabled>${icon('i-sync')}Menunggu konfirmasi agent…</button>`;
+    else if (S.confirm) action = `<div class="confirm"><span>${st === 'paused' ? 'Kirim perintah <b>lanjutkan entry</b> ke agent?' : 'Kirim perintah <b>jeda entry</b> ke semua EA di terminal ini? Posisi terbuka tidak ditutup.'}</span>
+        <div><button class="btn" data-act="cancel">Batal</button><button class="btn primary" data-act="send">Kirim perintah</button></div></div>`;
+    else if (st === 'blocked') action = `<button class="btn" disabled>${icon('i-lock')}Diblokir sampai reset harian</button>`;
+    else action = `<button class="btn ${st === 'paused' ? 'green' : 'red'}" data-act="pause" ${can('control') && online ? '' : 'disabled'}>${icon(st === 'paused' ? 'i-play' : 'i-pause')}${st === 'paused' ? 'Lanjutkan entry semua EA' : 'Jeda entry semua EA'}</button>`;
+    return `<section class="card"><div class="ph"><h2>Proteksi harian</h2></div><div class="prot">
+      <div class="state">${st === 'allowed' ? '<span class="dot g"></span>Entry baru diizinkan' : st === 'paused' ? '<span class="dot y"></span><span class="warn">Entry dijeda manual</span>' : st === 'blocked' ? '<span class="dot r"></span><span class="down">Batas tercapai, entry baru diblokir</span>' : '<span class="dot m"></span>Status belum diketahui'}</div>
+      <div class="muted">Saat rugi hari ini mencapai batas, agent memblokir entry baru semua EA. Posisi aktif tetap mengikuti SL/TP masing-masing EA.</div>
+      ${action}<div class="center">${!can('control') ? 'Peran Viewer tidak dapat mengirim perintah.' : !online ? 'Agent offline.' : 'Perintah dikirim lewat backend terautentikasi.'}</div></div></section>`;
   }
-
+  function exposureCard() {
+    const ps = tel()?.positions || [], by = {};
+    ps.forEach(p => { const b = by[p.symbol] ||= { buy: 0, sell: 0, pl: 0, n: 0 }; b[p.side === 'BUY' ? 'buy' : 'sell'] += p.volume; b.pl += p.profit; b.n++; });
+    return `<section class="card"><div class="ph"><h2>Exposure per Symbol</h2></div><div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Posisi</th><th class="r">Buy lot</th><th class="r">Sell lot</th><th class="r">Net lot</th><th class="r">Floating</th></tr></thead><tbody>
+      ${Object.entries(by).map(([s, b]) => `<tr><td><b>${esc(s)}</b></td><td class="r num">${b.n}</td><td class="r num up">${b.buy.toFixed(2)}</td><td class="r num down">${b.sell.toFixed(2)}</td><td class="r num">${(b.buy - b.sell).toFixed(2)}</td><td class="r num ${cls(b.pl)}">${fmtNum(b.pl, true)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Tidak ada posisi terbuka.</td></tr>'}
+      </tbody></table></div></section>`;
+  }
+  function diagCard() {
+    const t = tel(), a = S.st?.agent, term = t?.terminal || {}, age = ago(), secure = location.protocol === 'https:';
+    const row = (l, v) => `<div class="li"><span>${l}</span><span>${v}</span></div>`;
+    const spreads = (t?.symbols || []).slice().sort((x, y) => y.spread - x.spread);
+    return `<div class="grid g-2"><section class="card"><div class="ph"><h2>Agent &amp; Terminal</h2><span class="chip ${a?.online ? 'g' : 'r'}">${a?.online ? 'NORMAL' : 'OFFLINE'}</span></div>
+      ${row('Agent ID', esc(a?.agent_id || '–'))}${row('Versi agent', esc(t?.agent_version || '–'))}${row('MT5 build', esc(term.build ?? '–'))}
+      ${row('Broker', esc(t?.account?.company || '–'))}${row('Server', esc(t?.account?.server || '–'))}${row('Leverage', t?.account?.leverage ? '1:' + t.account.leverage : '–')}
+      ${row('Koneksi broker', t ? (t.terminal_connected ? '<span class="up">Terhubung</span>' : '<span class="down">Terputus</span>') : '–')}${row('Ping', term.ping_ms != null ? term.ping_ms.toFixed(1) + ' ms' : '–')}
+      ${row('Algo Trading', term.trade_allowed == null ? '–' : term.trade_allowed ? '<span class="up">Diizinkan</span>' : '<span class="down">Mati</span>')}
+      ${row('Telemetri terakhir', `<span id="telAgo">${age == null ? '–' : Math.round(age) + ' detik lalu'}</span>`)}${row('Kredensial', a?.received_at ? 'Terverifikasi (HMAC)' : 'Belum pernah terhubung')}
+      ${row('Kanal kontrol', secure ? 'HTTPS · RBAC' : '<span class="warn">HTTP, pasang HTTPS</span>')}</section>
+      <section class="card"><div class="ph"><h2>Spread per Symbol</h2></div><div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Spread</th><th class="r">ATR</th><th class="r">Spread / ATR</th></tr></thead><tbody>
+      ${spreads.map(s => `<tr><td>${esc(s.symbol)}</td><td class="r num">${s.spread} pt</td><td class="r num">${s.atr_points == null ? '–' : s.atr_points.toFixed(0) + ' pt'}</td><td class="r num ${s.atr_points && s.spread / s.atr_points > .1 ? 'warn' : ''}">${s.atr_points ? (s.spread / s.atr_points * 100).toFixed(1) + '%' : '–'}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">–</td></tr>'}
+      </tbody></table></div></section></div>`;
+  }
   function usersView() {
     if (!can('admin')) return `<section class="card"><div class="empty">Hanya Super Admin yang dapat mengelola pengguna.</div></section>`;
-    const perm = r => ['Ya', r !== 'viewer' ? 'Ya' : 'Tidak', r === 'admin' ? 'Ya' : 'Tidak'];
-    return `<section class="card"><div class="tw"><table><thead><tr><th>Pengguna</th><th>Peran</th><th>Kirim perintah</th><th>Kelola pengguna</th><th>Status</th><th>Kata sandi</th></tr></thead><tbody>
-      ${S.users.map(u => { const self = u.id === S.me.id, [, c, m] = perm(u.role); return `<tr>
-        <td><b>${esc(u.display_name)}</b><div class="muted" style="font-size:13px">${esc(u.username)}${u.last_login ? ' · login ' + new Date(u.last_login * 1000).toLocaleString('id-ID') : ''}</div></td>
+    return `<section class="card"><div class="ph"><h2>Pengguna</h2></div><div class="tw"><table><thead><tr><th>Pengguna</th><th>Peran</th><th>Kirim perintah</th><th>Kelola pengguna</th><th>Aktif</th><th>Kata sandi</th></tr></thead><tbody>
+      ${S.users.map(u => { const self = u.id === S.me.id; return `<tr>
+        <td><b>${esc(u.display_name)}</b><div class="muted" style="font-size:12.5px">${esc(u.username)}${u.last_login ? ' · login ' + new Date(u.last_login * 1000).toLocaleString('id-ID') : ''}</div></td>
         <td><select data-urole="${u.id}" aria-label="Peran ${esc(u.username)}" ${self ? 'disabled' : ''}>${['admin', 'trader', 'viewer'].map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}</select></td>
-        <td><span class="chip ${c === 'Ya' ? 'g' : ''}">${c}</span></td><td><span class="chip ${m === 'Ya' ? 'g' : ''}">${m}</span></td>
+        <td><span class="chip ${u.role !== 'viewer' ? 'g' : ''}">${u.role !== 'viewer' ? 'Ya' : 'Tidak'}</span></td><td><span class="chip ${u.role === 'admin' ? 'g' : ''}">${u.role === 'admin' ? 'Ya' : 'Tidak'}</span></td>
         <td><button class="toggle ${u.active ? 'on' : ''}" data-uactive="${u.id}" aria-label="Aktifkan ${esc(u.username)}" ${self ? 'disabled' : ''}></button></td>
-        <td><form class="inline" data-upw="${u.id}"><input id="upw-${u.id}" type="password" minlength="10" placeholder="Sandi baru" aria-label="Sandi baru ${esc(u.username)}" required><button class="btn" type="submit">Atur</button></form></td></tr>`; }).join('')}
+        <td><form class="inline" data-upw="${u.id}"><input id="upw-${u.id}" type="password" minlength="10" placeholder="Sandi baru" aria-label="Sandi baru ${esc(u.username)}" required><button class="btn sm" type="submit">Atur</button></form></td></tr>`; }).join('')}
       </tbody></table></div></section>
-      <section class="card"><div class="ph"><div><h2><span class="dot g"></span>Tambah pengguna</h2><p>Kata sandi minimal 10 karakter</p></div></div>
+      <section class="card"><div class="ph"><h2>Tambah pengguna</h2><span class="muted">Kata sandi minimal 10 karakter</span></div>
       <form id="userAdd" class="fgrid">
         <label>Nama pengguna<input id="nu-user" required pattern="[A-Za-z0-9_.\\-]{3,64}"></label>
         <label>Nama tampilan<input id="nu-name" required maxlength="80"></label>
@@ -654,87 +956,109 @@ body { margin: 0; }
         <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit">Tambah pengguna</button></div>
       </form></section>`;
   }
-
   function settingsView() {
     const p = tel()?.protection;
-    return `<section class="card"><div class="ph"><div><h2><span class="dot y"></span>Proteksi harian</h2><p>Dikirim sebagai perintah ke agent. Menaikkan batas tidak mencabut blokir yang sudah terjadi hari ini.</p></div></div>
+    return `<section class="card"><div class="ph"><h2>Batas rugi harian</h2><span class="muted">Menaikkan batas tidak mencabut blokir yang sudah terjadi hari ini.</span></div>
       <form id="limitForm" class="fgrid">
-        <label>Batas rugi harian (% dari equity awal)<input id="limIn" type="number" min="0.5" max="20" step="0.1" value="${p?.limit_pct ?? 3}" ${can('admin') ? '' : 'disabled'}></label>
+        <label>Batas rugi harian (% dari equity awal hari)<input id="limIn" type="number" min="0.5" max="20" step="0.1" value="${p?.limit_pct ?? 3}" ${can('admin') ? '' : 'disabled'}></label>
         <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${can('admin') && !S.pending ? '' : 'disabled'}>Kirim ke agent</button></div>
       </form>${can('admin') ? '' : '<div class="pf">Hanya Super Admin yang dapat mengubah batas rugi.</div>'}</section>
-      <section class="card"><div class="ph"><div><h2><span class="dot g"></span>Mata uang tampilan</h2><p>Akun dalam ${esc(acctCur())}. USC = USD ÷ 100. Kurs USD/IDR ${brokerIdr() ? 'diambil otomatis dari simbol USDIDR broker: ' + brokerIdr().toLocaleString('id-ID') : 'tidak tersedia di broker, isi manual di bawah'}.</p></div></div>
+      <section class="card"><div class="ph"><h2>Mata uang tampilan</h2><span class="muted">Akun dalam ${esc(acctCur())}. USC = USD ÷ 100. Kurs USD/IDR ${brokerIdr() ? 'otomatis dari simbol USDIDR broker: ' + brokerIdr().toLocaleString('id-ID') : 'tidak tersedia di broker, isi manual'}.</span></div>
       <form id="fxForm" class="fgrid">
         <label>Kurs manual 1 USD = … IDR<input id="fxIn" type="number" min="1000" max="100000" step="1" value="${manualIdr() || ''}" placeholder="mis. kurs hari ini" ${brokerIdr() ? 'disabled' : ''}></label>
         <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${brokerIdr() ? 'disabled' : ''}>Simpan kurs</button></div>
       </form><div class="pf">Pilihan mata uang dan kurs manual tersimpan di browser ini saja.</div></section>
-      <section class="card"><div class="ph"><div><h2><span class="dot b"></span>Log perintah</h2><p>Setiap perintah dicatat dengan pengirim, peran, dan konfirmasi agent</p></div></div>
-      ${S.cmds.length ? `<div class="tw"><table class="log"><thead><tr><th>Waktu</th><th>Pengguna</th><th>Perintah</th><th>Status</th><th>Hasil</th></tr></thead><tbody>
-      ${S.cmds.map(c => `<tr><td>${hms(c.issued_at)}</td><td>${esc(c.issued_by)} <span class="muted">(${ROLE_LABEL[c.issued_role] || '–'})</span></td>
-        <td>${CMD_LABEL[c.type] || esc(c.type)}${c.magic ? ' ' + c.magic : ''}${c.value != null ? ' ' + c.value + '%' : ''}</td>
+      <section class="card"><div class="ph"><h2>Log perintah</h2><span class="muted">Setiap perintah dicatat dengan pengirim, peran, dan konfirmasi agent</span></div>
+      ${S.cmds.length ? `<div class="tw"><table><thead><tr><th>Waktu (server)</th><th>Pengguna</th><th>Perintah</th><th>Status</th><th>Hasil</th></tr></thead><tbody>
+      ${S.cmds.map(c => `<tr><td class="num">${srvDayTime(c.issued_at + srvOffset())}</td><td>${esc(c.issued_by)} <span class="muted">(${ROLE_LABEL[c.issued_role] || '–'})</span></td>
+        <td>${CMD_LABEL[c.type] || esc(c.type)}${c.magic ? ' ' + esc(eaLabel(c.magic)) : ''}${c.value != null ? ' ' + c.value + '%' : ''}</td>
         <td><span class="chip ${c.status === 'acked' ? 'g' : c.status === 'pending' ? 'y' : 'r'}">${STATUS_LABEL[c.status] || esc(c.status)}</span></td><td>${esc(c.result || '')}</td></tr>`).join('')}
       </tbody></table></div>` : `<div class="empty">Belum ada perintah.</div>`}</section>`;
   }
+  function emptyState() {
+    return `<section class="card"><div class="empty" style="padding:40px 18px;display:flex;flex-direction:column;gap:8px;align-items:center">
+      <b style="color:var(--fg);font-size:16px">Menunggu telemetri pertama dari agent</b>
+      <span>${(S.st?.agents || []).length ? 'Pasang AlgoDeskAgent di terminal MT5 dengan URL backend, ID agent, dan rahasianya.' : 'Belum ada agent terdaftar. Jalankan <span class="mono">python -m algodesk.cli create-agent vps-01</span> di server.'}</span></div></section>`;
+  }
 
+  const HEADS = {
+    overview: ['Overview', 'Ringkasan performa akun dan EA secara real-time.'],
+    positions: ['Open Positions', 'Posisi terbuka per simbol, Magic Number, dan basket.'],
+    history: ['Trade History', 'Trade tertutup dari riwayat deal MT5 (jam server broker).'],
+    eas: ['EA Expert (Bot)', 'Kelola bot EA, aktifkan/nonaktifkan, dan pantau performa secara real-time.'],
+    basket: ['Basket Monitor', 'Posisi terbuka dikelompokkan per Magic Number dan simbol.'],
+    risk: ['Risk Center', 'Proteksi rugi harian, margin, dan eksposur.'],
+    analytics: ['Strategy Analytics', 'Perbandingan EA dan perkembangan equity.'],
+    market: ['Market Watch', 'Harga, struktur pasar, RSI/ATR, dan sinyal untuk simbol di Market Watch terminal.'],
+    diag: ['Broker Diagnostics', 'Kondisi agent, terminal, koneksi broker, dan spread.'],
+    users: ['Pengguna & RBAC', 'Siapa yang bisa melihat dan siapa yang bisa mengirim perintah ke agent.'],
+    settings: ['Settings', 'Batas rugi harian, mata uang tampilan, dan log perintah.'],
+  };
+  function head() {
+    const [h, p] = HEADS[S.view];
+    const acts = S.view === 'eas' && can('control') ? `<div class="acts"><button class="btn green" data-act="allon" ${S.st?.agent?.online ? '' : 'disabled'}>${icon('i-play')}Aktifkan Semua EA</button>
+      <button class="btn red" data-act="alloff" ${S.st?.agent?.online ? '' : 'disabled'}>${icon('i-pause')}Nonaktifkan Semua EA</button><button class="btn outline" data-go="settings">${icon('i-gear')}Pengaturan Global</button></div>` : '';
+    return S.view === 'overview' ? '' : `<div class="phead"><div><h1>${h}</h1><p>${p}</p></div>${acts}</div>`;
+  }
   function viewBody() {
-    if (!tel() && !['users', 'settings'].includes(S.view)) return acctBar() + emptyState();
+    if (!tel() && !['users', 'settings'].includes(S.view)) return emptyState();
     switch (S.view) {
-      case 'overview': return acctBar() + kpis()
-        + `<div class="row r-mw">${marketCard(false)}${protCard()}</div>`
-        + `<div class="row r-pos">${posCard()}${eaCard()}</div>`
-        + `<div class="row r-pos">${chartCard('Equity hari ini', 'Perubahan intrahari · ' + viewCur() + ' · 24 jam')}${agentCard()}</div>`;
-      case 'market': return marketCard(true);
-      case 'positions': return kpis() + posCard();
-      case 'eas': return eaManage() + protCard();
-      case 'perf': return kpis() + chartCard('Equity 7 hari', 'Sampel tiap 30 detik dari telemetri agent');
+      case 'overview': return filterBar() + kpiRow()
+        + `<div class="grid g-ov1">${equityCard()}${dailyCard()}${symPerfCard()}</div>`
+        + `<div class="grid g-ov2">${positionsTable(true)}${basketCard(false)}</div>`
+        + `<div class="grid g-ov2">${historyTable(S.trades, { limit: 8 })}${riskCard()}</div>`;
+      case 'positions': return positionsTable(false) + exposureCard();
+      case 'history': return historyTable(S.histTrades, { days: true });
+      case 'eas': return eaCards() + `<div class="grid g-ea2">${perfSummary()}${allocCard()}</div><div class="grid g-ea2">${logsCard()}${resourceCard()}</div>`;
+      case 'basket': return basketCard(true);
+      case 'risk': return riskCard() + `<div class="grid g-2">${protControl()}${exposureCard()}</div>`;
+      case 'analytics': return filterBar() + kpiRow() + `<div class="grid g-2">${equityCard()}${dailyCard()}</div>` + perfSummary() + `<div class="grid g-2">${symPerfCard()}${allocCard()}</div>`;
+      case 'market': return marketCard();
+      case 'diag': return diagCard();
       case 'users': return usersView();
       case 'settings': return settingsView();
     }
   }
-
   function render() {
-    $('main').innerHTML = head() + viewBody() + `<div class="foot"><span>AlgoDesk · MT5 Agent ${esc(tel()?.agent_version || '–')}</span></div>`;
-    $('crumb').textContent = HEADS[S.view][3];
-    document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.view === S.view));
-    const t = tel(), online = S.st?.agent?.online;
-    $('navPos').textContent = t?.positions?.length ?? 0;
-    $('navSym').textContent = t?.symbols?.length ?? 0;
-    const ap = $('acctPill');
-    ap.className = 'pill ' + (t ? (t.account.demo ? 'demo' : 'real') : '');
-    ap.innerHTML = `<span class="dot"></span>${t ? (t.account.demo ? 'Demo' : 'Akun real') : 'Tanpa data'}`;
-    const mp = $('mt5Pill');
-    mp.className = 'pill ' + (online && t?.terminal_connected ? '' : 'bad');
-    mp.innerHTML = `${icon('i-radio')}${online && t?.terminal_connected ? 'MT5 terhubung' : 'MT5 terputus'}`;
-    $('vpsState').innerHTML = `<span class="dot ${online ? 'g' : 'r'}"></span>${online ? 'Gateway aktif' : 'Agent offline'}`;
+    renderChrome();
+    $('main').innerHTML = head() + viewBody() + `<div class="foot">AlgoDesk · MT5 Agent ${esc(tel()?.agent_version || '–')} · waktu trade dalam jam server broker</div>`;
+    $('modal').innerHTML = detailModal();
   }
   function safeRender() {
-    // keep half-typed form values: skip auto-refresh while the user is in a field
-    if (document.activeElement?.matches('#main input, #main select')) return;
+    // keep half-typed form values and open pickers: skip auto-refresh while the user is in a field
+    if (document.activeElement?.matches('#main input, #main select, .top select')) { renderChromeLight(); return; }
     render();
   }
+  function renderChromeLight() { const l = $('lastUpd'); if (l && S.lastUpdate) l.textContent = new Date(S.lastUpdate).toLocaleTimeString('id-ID'); }
 
-  // ---------- polling ----------
+  // ---------- data loading ----------
   async function loadState() {
     const st = await api('/state');
-    (st.telemetry?.symbols || []).forEach(s => { const prev = S.prevBid[s.symbol]; S.dir[s.symbol] = prev == null ? 0 : Math.sign(s.bid - prev); S.prevBid[s.symbol] = s.bid; });
+    (st.telemetry?.symbols || []).forEach(s => { const h = S.hist[s.symbol] ||= []; if (h[h.length - 1] !== s.bid) h.push(s.bid); if (h.length > 60) h.shift(); });
     const switched = S.st && st.telemetry && S.st.telemetry?.account?.login !== st.telemetry.account.login;
-    S.st = st; S.fetchedAt = Date.now();
-    if (switched) await loadEquity();  // another account logged in: drop the old account's chart now
+    S.st = st; S.fetchedAt = Date.now(); S.lastUpdate = Date.now();
+    if (switched) await Promise.all([loadEquity(), loadStats()]);  // another account logged in: drop the old account's data now
   }
-  const loadEquity = async () => { S.eq = (await api('/equity?hours=' + S.eqHours)).samples; };
+  const loadEquity = async () => { S.eq = (await api('/equity?hours=' + Math.min(192, S.days * 24))).samples; };
   const loadCmds = async () => { S.cmds = (await api('/commands?limit=100')).commands; };
   const loadUsers = async () => { if (can('admin')) S.users = (await api('/users')).users; };
-
+  async function loadStats() {
+    const [day, per, tr, dl] = await Promise.all([
+      api('/eas/stats?period=day'), api('/eas/stats?period=' + S.perfTab), api('/trades?days=' + S.days), api('/deals?limit=300')]);
+    S.statsDay = day.eas; S.statsPer = per.eas; S.perStart = per.start; S.trades = tr.trades; S.tradesStart = tr.start; S.deals = dl.deals; S.dealsStart = dl.start;
+    if (S.view === 'history') S.histTrades = (await api('/trades?days=' + S.histDays)).trades;
+  }
   function every(ms, fn) { const run = () => fn().catch(e => console.warn(e)); run(); S.timers.push(setInterval(run, ms)); }
   function startPolling() {
     S.timers.forEach(clearInterval); S.timers = [];
     every(2000, async () => { await loadState(); safeRender(); });
+    every(15000, async () => { await loadStats(); safeRender(); });
     every(30000, async () => { await loadEquity(); safeRender(); });
-    every(5000, async () => { if (S.view === 'settings') { await loadCmds(); safeRender(); } });
-    S.timers.push(setInterval(() => {
-      const c = $('clock'); if (c) c.textContent = new Date().toLocaleTimeString('id-ID');
-      const a = $('telAgo'), g = ago(); if (a && g != null) a.textContent = Math.round(g) + ' detik lalu';
-    }, 1000));
+    every(5000, async () => { if (['settings', 'eas'].includes(S.view)) { await loadCmds(); safeRender(); } });
+    S.timers.push(setInterval(() => { tickClock(); const a = $('telAgo'), g = ago(); if (a && g != null) a.textContent = Math.round(g) + ' detik lalu'; }, 1000));
+    tickClock();
   }
+  async function refreshAll() { try { await Promise.all([loadState(), loadStats(), loadEquity(), loadCmds()]); render(); toast('Data diperbarui.'); } catch (e) { toast(e.message, 'err'); } }
 
   async function sendCommand(body, label) {
     if (S.pending) return;
@@ -750,10 +1074,18 @@ body { margin: 0; }
         if (c.status === 'acked') toast(`${label}: ${c.result || 'dikonfirmasi agent'}`);
         else if (c.status === 'failed') toast(`${label} ditolak agent: ${c.result}`, 'err');
         else toast(`${label} kedaluwarsa: agent tidak merespons.`, 'err');
-        await loadState(); render(); return;
+        await Promise.all([loadState(), loadCmds()]); render(); return;
       }
       S.pending = null; render();
     } catch (e) { S.pending = null; toast(e.message, 'err'); render(); }
+  }
+  // All EAs at once: one command per magic, applied by the agent on its next polls.
+  async function bulkEa(on) {
+    const ms = eaMagics().filter(m => eaOff(m) === on);
+    if (!ms.length) { toast(on ? 'Semua EA sudah aktif.' : 'Semua EA sudah nonaktif.'); return; }
+    try { for (const m of ms) await api('/commands', { method: 'POST', body: { type: on ? 'enable_magic' : 'disable_magic', magic: m } });
+      toast(`${ms.length} perintah ${on ? 'aktifkan' : 'nonaktifkan'} EA dikirim ke agent.`); await loadCmds(); render(); }
+    catch (e) { toast(e.message, 'err'); }
   }
 
   // ---------- login ----------
@@ -764,7 +1096,7 @@ body { margin: 0; }
   async function showApp(me) {
     S.me = me;
     $('loginView').hidden = true; $('appView').hidden = false;
-    $('uname').textContent = me.display_name; $('urole').textContent = 'Peran: ' + ROLE_LABEL[me.role];
+    $('uname').textContent = me.display_name; $('urole').textContent = ROLE_LABEL[me.role];
     $('avatar').textContent = me.display_name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
     $('navUsers').hidden = me.role !== 'admin';
     S.view = 'overview'; render(); startPolling();
@@ -779,37 +1111,70 @@ body { margin: 0; }
   document.addEventListener('click', async e => {
     const nav = e.target.closest('[data-view],[data-go]');
     if (nav) {
-      S.view = nav.dataset.view || nav.dataset.go; S.confirm = false; window.scrollTo(0, 0);
-      S.eqHours = S.view === 'perf' ? 168 : 24;
-      try { if (S.view === 'perf' || S.view === 'overview') await loadEquity(); if (S.view === 'settings') await loadCmds(); if (S.view === 'users') await loadUsers(); } catch (err) { toast(err.message, 'err'); }
+      S.view = nav.dataset.view || nav.dataset.go; S.confirm = false; S.edit = null; window.scrollTo(0, 0);
+      try { if (S.view === 'settings' || S.view === 'eas') await loadCmds(); if (S.view === 'users') await loadUsers();
+        if (S.view === 'history') S.histTrades = (await api('/trades?days=' + S.histDays)).trades; } catch (err) { toast(err.message, 'err'); }
       render(); return;
     }
     const ub = e.target.closest('#userBtn'), menu = $('userMenu');
     if (ub) { menu.hidden = !menu.hidden; ub.setAttribute('aria-expanded', String(!menu.hidden)); return; }
     if (!e.target.closest('.user')) menu.hidden = true;
+    const d = e.target.closest('[data-eq],[data-dp],[data-perf],[data-hsym]');
+    if (d) {
+      if (d.dataset.eq) S.eqTab = d.dataset.eq;
+      if (d.dataset.dp) S.dpTab = d.dataset.dp;
+      if (d.dataset.hsym) S.histSym = d.dataset.hsym;
+      if (d.dataset.perf) { S.perfTab = d.dataset.perf; try { const r = await api('/eas/stats?period=' + S.perfTab); S.statsPer = r.eas; S.perStart = r.start; } catch (err) { toast(err.message, 'err'); } }
+      render(); return;
+    }
     const mg = e.target.closest('[data-magic]');
-    if (mg && !mg.disabled) { const m = +mg.dataset.magic, on = mg.classList.contains('on'); sendCommand({ type: on ? 'disable_magic' : 'enable_magic', magic: m }, `${on ? 'Nonaktifkan' : 'Aktifkan'} magic ${m}`); return; }
+    if (mg && !mg.disabled) { const m = +mg.dataset.magic, off = eaOff(m); sendCommand({ type: off ? 'enable_magic' : 'disable_magic', magic: m }, `${off ? 'Start' : 'Stop'} ${eaLabel(m)}`); return; }
+    const ed = e.target.closest('[data-edit]');
+    if (ed && !ed.disabled) { S.edit = +ed.dataset.edit; render(); return; }
+    const dt = e.target.closest('[data-detail]');
+    if (dt) { S.detail = +dt.dataset.detail; S.detailTrades = []; render();
+      try { S.detailTrades = (await api('/trades?days=30&magic=' + S.detail)).trades; } catch (err) { toast(err.message, 'err'); } render(); return; }
     const ua = e.target.closest('[data-uactive]');
     if (ua && !ua.disabled) { try { await api('/users/' + ua.dataset.uactive, { method: 'PATCH', body: { active: !ua.classList.contains('on') } }); await loadUsers(); toast('Status pengguna diperbarui.'); } catch (err) { toast(err.message, 'err'); } render(); return; }
-    const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
+    const actEl = e.target.closest('[data-act]'), act = actEl?.dataset.act; if (!act) return;
+    if (act === 'closemodal') { if (e.target === actEl || actEl.tagName === 'BUTTON') { S.detail = null; render(); } return; }
     if (act === 'logout') { try { await api('/auth/logout', { method: 'POST', body: {} }); } catch (_) {} showLogin(); }
+    if (act === 'refresh') refreshAll();
+    if (act === 'allon' || act === 'alloff') bulkEa(act === 'allon');
+    if (act === 'editcancel') { S.edit = null; render(); }
+    if (act === 'logclear') { S.logEa = S.logSym = S.logEv = ''; render(); }
     if (act === 'pause') { S.confirm = true; render(); }
     if (act === 'cancel') { S.confirm = false; render(); }
     if (act === 'send') { S.confirm = false; const paused = tel()?.protection?.entry_state === 'paused'; sendCommand({ type: paused ? 'resume_entry' : 'pause_entry' }, paused ? 'Lanjutkan entry' : 'Jeda entry'); }
   });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.detail != null) { S.detail = null; render(); } });
   document.addEventListener('change', async e => {
-    const r = e.target.closest('[data-urole]');
-    if (e.target.id === 'curSel') { S.cur = e.target.value; pref.set('cur', S.cur); e.target.blur(); render(); return; }
-    if (r) { try { await api('/users/' + r.dataset.urole, { method: 'PATCH', body: { role: r.value } }); await loadUsers(); toast('Peran diperbarui. Pengguna perlu login ulang.'); } catch (err) { toast(err.message, 'err'); } r.blur(); render(); }
+    const el = e.target, id = el.id;
+    if (id === 'curSel') { S.cur = el.value; pref.set('cur', S.cur); }
+    else if (id === 'fSym') S.sym = el.value;
+    else if (id === 'fBkt') S.basketSym = el.value;
+    else if (id === 'lEa') S.logEa = el.value;
+    else if (id === 'lSym') S.logSym = el.value;
+    else if (id === 'lEv') S.logEv = el.value;
+    else if (id === 'fDays') { S.days = +el.value; el.blur(); try { await Promise.all([loadStats(), loadEquity()]); } catch (err) { toast(err.message, 'err'); } }
+    else if (id === 'hDays') { S.histDays = +el.value; el.blur(); try { S.histTrades = (await api('/trades?days=' + S.histDays)).trades; } catch (err) { toast(err.message, 'err'); } }
+    else if (el.closest('[data-urole]')) { const r = el.closest('[data-urole]'); try { await api('/users/' + r.dataset.urole, { method: 'PATCH', body: { role: r.value } }); await loadUsers(); toast('Peran diperbarui. Pengguna perlu login ulang.'); } catch (err) { toast(err.message, 'err'); } }
+    else return;
+    el.blur(); render();
+  });
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'hQ') return;
+    S.histQ = e.target.value; const pos = e.target.selectionStart; render();
+    const q = $('hQ'); if (q) { q.focus(); q.setSelectionRange(pos, pos); }
   });
   document.addEventListener('submit', async e => {
     const f = e.target; if (f.id === 'loginForm') return;
     e.preventDefault();
     try {
-      if (f.id === 'fxForm') { const v = parseFloat($('fxIn').value); if (!(v >= 1000)) throw new Error('Kurs tidak valid'); pref.set('usdIdr', String(v)); $('fxIn').blur(); toast('Kurs disimpan'); render(); return; }
-      if (f.id === 'limitForm') { const v = parseFloat($('limIn').value); $('limIn').blur(); await sendCommand({ type: 'set_limit', value: v }, `Ubah batas rugi ke ${v}%`); await loadCmds(); }
+      if (f.id === 'fxForm') { const v = parseFloat($('fxIn').value); if (!(v >= 1000)) throw new Error('Kurs tidak valid'); pref.set('usdIdr', String(v)); toast('Kurs disimpan'); }
+      else if (f.id === 'limitForm') { const v = parseFloat($('limIn').value); $('limIn').blur(); await sendCommand({ type: 'set_limit', value: v }, `Ubah batas rugi ke ${v}%`); await loadCmds(); }
       else if (f.id === 'eaAdd') { await api('/eas/' + $('eaAddMagic').value, { method: 'PUT', body: { name: $('eaAddName').value, scope: '' } }); toast('EA didaftarkan.'); }
-      else if (f.dataset.eaform) { const m = f.dataset.eaform; await api('/eas/' + m, { method: 'PUT', body: { name: $('ean-' + m).value, scope: $('eas-' + m).value } }); toast('Nama EA disimpan.'); }
+      else if (f.dataset.eaform) { const m = f.dataset.eaform; await api('/eas/' + m, { method: 'PUT', body: { name: $('ean-' + m).value, scope: $('eas-' + m).value } }); S.edit = null; toast('EA disimpan.'); }
       else if (f.id === 'userAdd') { await api('/users', { method: 'POST', body: { username: $('nu-user').value, display_name: $('nu-name').value, role: $('nu-role').value, password: $('nu-pw').value } }); await loadUsers(); toast('Pengguna ditambahkan.'); }
       else if (f.dataset.upw) { await api('/users/' + f.dataset.upw, { method: 'PATCH', body: { password: $('upw-' + f.dataset.upw).value } }); toast('Kata sandi diperbarui. Sesi pengguna itu diakhiri.'); }
       document.activeElement?.blur(); await loadState(); render();

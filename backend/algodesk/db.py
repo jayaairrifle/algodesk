@@ -54,6 +54,26 @@ CREATE TABLE IF NOT EXISTS commands (
     entry_state  TEXT
 );
 CREATE INDEX IF NOT EXISTS commands_agent_status ON commands(agent_id, status);
+CREATE TABLE IF NOT EXISTS deals (
+    login       INTEGER NOT NULL,
+    ticket      INTEGER NOT NULL,
+    agent_id    TEXT NOT NULL,
+    position_id INTEGER NOT NULL DEFAULT 0,
+    time        INTEGER NOT NULL,
+    type        TEXT NOT NULL,
+    entry       TEXT NOT NULL DEFAULT '',
+    symbol      TEXT NOT NULL DEFAULT '',
+    volume      REAL NOT NULL DEFAULT 0,
+    price       REAL NOT NULL DEFAULT 0,
+    profit      REAL NOT NULL DEFAULT 0,
+    swap        REAL NOT NULL DEFAULT 0,
+    commission  REAL NOT NULL DEFAULT 0,
+    fee         REAL NOT NULL DEFAULT 0,
+    magic       INTEGER NOT NULL DEFAULT 0,
+    comment     TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (login, ticket)
+);
+CREATE INDEX IF NOT EXISTS deals_login_time ON deals(login, time);
 CREATE TABLE IF NOT EXISTS eas (
     magic INTEGER PRIMARY KEY,
     name  TEXT NOT NULL,

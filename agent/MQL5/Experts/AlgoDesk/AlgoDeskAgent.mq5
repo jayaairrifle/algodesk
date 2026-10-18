@@ -48,7 +48,7 @@ input double InpRsiBuy            = 55.0;   // RSI minimal untuk sinyal BUY (den
 input double InpRsiSell           = 45.0;   // RSI maksimal untuk sinyal SELL (dengan struktur LH/LL)
 input int    InpMaxSymbols        = 20;
 
-#define AGENT_VERSION "0.12"
+#define AGENT_VERSION "0.13"
 
 CTrade   g_trade;
 long     g_watch[];
@@ -57,6 +57,7 @@ int      g_rsi[];
 int      g_atr[];
 datetime g_lastTelemetry = 0;
 datetime g_lastPoll      = 0;
+datetime g_lastDealSync  = 0;
 datetime g_lastBackendOk = 0;
 string   g_lastError     = "";
 bool     g_limitLogged   = false;
@@ -578,6 +579,7 @@ string SymbolsJson()
            + ",\"digits\":" + IntegerToString(d)
            + ",\"bid\":" + N(SymbolInfoDouble(sym, SYMBOL_BID), d)
            + ",\"ask\":" + N(SymbolInfoDouble(sym, SYMBOL_ASK), d)
+           + ",\"day_open\":" + N(iOpen(sym, PERIOD_D1, 0), d)
            + ",\"spread\":" + IntegerToString(SymbolInfoInteger(sym, SYMBOL_SPREAD))
            + ",\"rsi\":" + N(rsi, 1)
            + ",\"atr_points\":" + N(atrPts, 1)
@@ -627,6 +629,9 @@ void SendTelemetry()
          + ",\"margin\":" + N(AccountInfoDouble(ACCOUNT_MARGIN))
          + ",\"free_margin\":" + N(AccountInfoDouble(ACCOUNT_MARGIN_FREE))
          + ",\"margin_level\":" + N(AccountInfoDouble(ACCOUNT_MARGIN_LEVEL))
+         + ",\"margin_call\":" + N(AccountInfoDouble(ACCOUNT_MARGIN_SO_CALL))
+         + ",\"stop_out\":" + N(AccountInfoDouble(ACCOUNT_MARGIN_SO_SO))
+         + ",\"leverage\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LEVERAGE))
       + "}"
       + ",\"protection\":{" +
          "\"day_start\":" + IntegerToString((long)AD_Get("DAY", 0.0))
@@ -643,12 +648,102 @@ void SendTelemetry()
          + ",\"closed_deals\":" + IntegerToString(closedDeals)
       + "}"
       + ",\"fx\":{\"usd_idr\":" + N(UsdIdrRate(), 2) + "}"
+      + ",\"terminal\":{" +
+         "\"build\":" + IntegerToString(TerminalInfoInteger(TERMINAL_BUILD))
+         + ",\"memory_mb\":" + IntegerToString(TerminalInfoInteger(TERMINAL_MEMORY_USED))
+         + ",\"memory_total_mb\":" + IntegerToString(TerminalInfoInteger(TERMINAL_MEMORY_PHYSICAL))
+         + ",\"cpu_cores\":" + IntegerToString(TerminalInfoInteger(TERMINAL_CPU_CORES))
+         + ",\"ping_ms\":" + N(TerminalInfoInteger(TERMINAL_PING_LAST) / 1000.0, 1)
+         + ",\"trade_allowed\":" + (TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) ? "true" : "false")
+      + "}"
       + ",\"positions\":" + PositionsJson()
       + ",\"symbols\":" + SymbolsJson()
       + ",\"timeframe\":" + J(StringSubstr(EnumToString(InpSignalTf), 7))
       + "}";
    string resp;
    Http("POST", "/agent/telemetry", body, resp);
+  }
+
+//+------------------------------------------------------------------+
+//| Deal history                                                     |
+//+------------------------------------------------------------------+
+string DealTypeText(const long t)
+  {
+   switch((int)t)
+     {
+      case DEAL_TYPE_BUY:     return "BUY";
+      case DEAL_TYPE_SELL:    return "SELL";
+      case DEAL_TYPE_BALANCE: return "BALANCE";
+      case DEAL_TYPE_CREDIT:  return "CREDIT";
+      case DEAL_TYPE_BONUS:   return "BONUS";
+      default:                return "OTHER";
+     }
+  }
+
+string DealEntryText(const long e)
+  {
+   switch((int)e)
+     {
+      case DEAL_ENTRY_IN:    return "IN";
+      case DEAL_ENTRY_OUT:   return "OUT";
+      case DEAL_ENTRY_INOUT: return "INOUT";
+      case DEAL_ENTRY_OUT_BY: return "OUT_BY";
+      default:               return "";
+     }
+  }
+
+// Sends deals in time order from a cursor kept per account (Global Variable AD_<login>_DSYNC),
+// at most 300 per request; the first run covers the last 31 days. Deals at the cursor second
+// are sent again on the next run, which the backend treats as an update.
+void SyncDeals()
+  {
+   if(!TerminalInfoInteger(TERMINAL_CONNECTED) || AccountInfoInteger(ACCOUNT_LOGIN) == 0)
+      return;
+   datetime now = TimeTradeServer();
+   datetime from = (datetime)(long)AD_Get("DSYNC", 0.0);
+   if(from < now - 31 * 86400)
+      from = now - 31 * 86400;
+   if(!HistorySelect(from, now + 60))
+      return;
+   string s = "[";
+   int n = 0;
+   datetime newest = from;
+   for(int i = 0; i < HistoryDealsTotal() && n < 300; i++)
+     {
+      ulong t = HistoryDealGetTicket(i);
+      if(t == 0)
+         continue;
+      datetime tm = (datetime)HistoryDealGetInteger(t, DEAL_TIME);
+      if(tm < from)
+         continue;
+      string sym = HistoryDealGetString(t, DEAL_SYMBOL);
+      int d = (sym == "") ? 2 : (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      if(n++ > 0) s += ",";
+      s += "{\"ticket\":" + IntegerToString((long)t)
+           + ",\"position\":" + IntegerToString(HistoryDealGetInteger(t, DEAL_POSITION_ID))
+           + ",\"time\":" + IntegerToString((long)tm)
+           + ",\"type\":" + J(DealTypeText(HistoryDealGetInteger(t, DEAL_TYPE)))
+           + ",\"entry\":" + J(DealEntryText(HistoryDealGetInteger(t, DEAL_ENTRY)))
+           + ",\"symbol\":" + J(sym)
+           + ",\"volume\":" + N(HistoryDealGetDouble(t, DEAL_VOLUME), 2)
+           + ",\"price\":" + N(HistoryDealGetDouble(t, DEAL_PRICE), d)
+           + ",\"profit\":" + N(HistoryDealGetDouble(t, DEAL_PROFIT), 2)
+           + ",\"swap\":" + N(HistoryDealGetDouble(t, DEAL_SWAP), 2)
+           + ",\"commission\":" + N(HistoryDealGetDouble(t, DEAL_COMMISSION), 2)
+           + ",\"fee\":" + N(HistoryDealGetDouble(t, DEAL_FEE), 2)
+           + ",\"magic\":" + IntegerToString(HistoryDealGetInteger(t, DEAL_MAGIC))
+           + ",\"comment\":" + J(HistoryDealGetString(t, DEAL_COMMENT))
+           + "}";
+      if(tm > newest)
+         newest = tm;
+     }
+   if(n == 0)
+      return;
+   string body = "{\"login\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + ",\"deals\":" + s + "]}";
+   string resp;
+   int code = Http("POST", "/agent/deals", body, resp);
+   if(code >= 200 && code < 300)
+      AD_Set("DSYNC", (double)newest);
   }
 
 //+------------------------------------------------------------------+
@@ -798,6 +893,11 @@ void OnTimer()
         {
          g_lastTelemetry = now;
          SendTelemetry();
+        }
+      if(now - g_lastDealSync >= 15)
+        {
+         g_lastDealSync = now;
+         SyncDeals();
         }
      }
    ShowStatus();

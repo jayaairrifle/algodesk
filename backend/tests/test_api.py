@@ -155,3 +155,52 @@ def test_browser_writes_must_be_json(app):
 
 def test_requires_login(app):
     assert TestClient(app).get("/api/state").status_code == 401
+
+
+def deal(ticket, pos, t, typ, entry, net=0.0, magic=2001, symbol="XAUUSDc", price=2640.0, volume=0.1):
+    return {"ticket": ticket, "position": pos, "time": t, "type": typ, "entry": entry, "symbol": symbol,
+            "volume": volume, "price": price, "profit": net, "swap": 0, "commission": 0, "fee": 0,
+            "magic": magic, "comment": ""}
+
+
+def test_deal_history_gives_per_ea_stats(app):
+    day = 1_800_000_000 // 86400 * 86400
+    tel = TELEMETRY | {"server_time": day + 3600, "protection": TELEMETRY["protection"] | {"day_start": day}}
+    agent = TestClient(app)
+    assert agent_call(agent, "POST", "/agent/telemetry", tel).status_code == 200
+    deals = [
+        deal(1, 10, day - 86400 * 3, "BUY", "IN"),                  # opened three days ago
+        deal(2, 10, day + 60, "SELL", "OUT", net=12.5, magic=0),    # closed today by SL/TP: magic 0
+        deal(3, 11, day + 120, "SELL", "IN", magic=2002),
+        deal(4, 11, day + 180, "BUY", "OUT", net=-4.0, magic=2002),
+        deal(5, 12, day + 200, "BUY", "IN", magic=2002),
+        deal(6, 12, day + 260, "SELL", "OUT", net=6.0, magic=2002),
+        deal(7, 13, day - 86400 * 2, "BUY", "IN", magic=2002),
+        deal(8, 13, day - 86400 * 2 + 60, "SELL", "OUT", net=3.0, magic=2002),
+        {"ticket": 9, "position": 0, "time": day + 30, "type": "BALANCE", "entry": "IN", "profit": 500.0},
+    ]
+    r = agent_call(agent, "POST", "/agent/deals", {"login": 884921, "deals": deals})
+    assert r.status_code == 200 and r.json()["stored"] == 9
+    # sending the same deals again does not duplicate them
+    assert agent_call(agent, "POST", "/agent/deals", {"login": 884921, "deals": deals[:2]}).status_code == 200
+
+    viewer = login(app, "viewer")
+    today = {e["magic"]: e for e in viewer.get("/api/eas/stats?period=day").json()["eas"]}
+    assert today[2001]["trades"] == 1 and today[2001]["net"] == 12.5
+    assert today[2002]["trades"] == 2 and today[2002]["win_rate"] == 50.0 and today[2002]["profit_factor"] == 1.5
+    assert today[2002]["max_drawdown"] == 4.0
+    week = {e["magic"]: e for e in viewer.get("/api/eas/stats?period=week").json()["eas"]}
+    assert week[2002]["trades"] == 3 and week[2002]["net"] == 5.0
+    trades = viewer.get("/api/trades?days=7&magic=2001").json()["trades"]
+    assert trades[0]["side"] == "BUY" and trades[0]["open_time"] == day - 86400 * 3
+    log = viewer.get("/api/deals").json()["deals"]
+    assert [d["ticket"] for d in log] == [6, 5, 4, 3, 2, 9]
+
+
+def test_deals_of_another_account_are_not_mixed_in(app):
+    day = 1_800_000_000 // 86400 * 86400
+    tel = TELEMETRY | {"protection": TELEMETRY["protection"] | {"day_start": day}}
+    agent = TestClient(app)
+    agent_call(agent, "POST", "/agent/telemetry", tel)
+    agent_call(agent, "POST", "/agent/deals", {"login": 111, "deals": [deal(1, 5, day + 1, "BUY", "IN"), deal(2, 5, day + 9, "SELL", "OUT", net=9)]})
+    assert login(app, "viewer").get("/api/eas/stats").json()["eas"] == []
