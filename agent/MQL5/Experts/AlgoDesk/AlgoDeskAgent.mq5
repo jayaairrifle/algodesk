@@ -48,7 +48,7 @@ input double InpRsiBuy            = 55.0;   // RSI minimal untuk sinyal BUY (den
 input double InpRsiSell           = 45.0;   // RSI maksimal untuk sinyal SELL (dengan struktur LH/LL)
 input int    InpMaxSymbols        = 20;
 
-#define AGENT_VERSION "0.11"
+#define AGENT_VERSION "0.12"
 
 CTrade   g_trade;
 long     g_watch[];
@@ -74,12 +74,47 @@ datetime CurrentDayStart()
    return StructToTime(t) + h * 3600;
   }
 
+// Balance at the start of the trading day: current balance minus every deal since then
+// (trades, deposits, withdrawals, credit). Used to check that a stored baseline belongs to this account.
+double DayStartBalance()
+  {
+   double bal = AccountInfoDouble(ACCOUNT_BALANCE);
+   if(!HistorySelect(CurrentDayStart(), TimeTradeServer() + 60))
+      return bal;
+   for(int i = 0; i < HistoryDealsTotal(); i++)
+     {
+      ulong t = HistoryDealGetTicket(i);
+      if(t != 0)
+         bal -= HistoryDealGetDouble(t, DEAL_PROFIT) + HistoryDealGetDouble(t, DEAL_SWAP)
+                + HistoryDealGetDouble(t, DEAL_COMMISSION) + HistoryDealGetDouble(t, DEAL_FEE);
+     }
+   return bal;
+  }
+
 void EnsureBaseline()
   {
-   datetime dayStart = CurrentDayStart();
-   if((datetime)(long)AD_Get("DAY", 0.0) == dayStart && AD_Get("BASE", 0.0) > 0.0)
+   // Right after start-up or an account switch the terminal can still report the previous
+   // account's equity; wait until it is connected to the logged-in account.
+   if(!TerminalInfoInteger(TERMINAL_CONNECTED) || AccountInfoInteger(ACCOUNT_LOGIN) == 0
+      || AccountInfoDouble(ACCOUNT_BALANCE) <= 0.0)
       return;
+   datetime dayStart = CurrentDayStart();
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   double base = AD_Get("BASE", 0.0);
+   if((datetime)(long)AD_Get("DAY", 0.0) == dayStart && base > 0.0)
+     {
+      // A baseline far from this account's start-of-day balance was taken from stale data
+      // (another account or currency): replace it and lift the block it caused.
+      double ref = DayStartBalance();
+      if(ref <= 0.0 || MathAbs(base - ref) <= 0.5 * ref)
+         return;
+      AD_Set("BASE", ref);
+      AD_Set("BLOCK", 0.0);
+      g_limitLogged = false;
+      PrintFormat("AlgoDesk: baseline %.2f tidak cocok dengan akun %I64d, diganti %.2f",
+                  base, AccountInfoInteger(ACCOUNT_LOGIN), ref);
+      return;
+     }
    AD_Set("DAY", (double)dayStart);
    AD_Set("BASE", equity);
    AD_Set("BLOCK", 0.0);

@@ -71,7 +71,7 @@ Dikirim tiap `InpTelemetrySec` detik.
 
 ```json
 {
-  "agent_id": "vps-01", "agent_version": "0.11", "sent_at": 1792027095, "server_time": 1792052295,
+  "agent_id": "vps-01", "agent_version": "0.12", "sent_at": 1792027095, "server_time": 1792052295,
   "terminal_connected": true,
   "account": { "login": 884921, "server": "Broker-Demo 01", "company": "...", "currency": "USD", "demo": true,
                "balance": 10246.38, "equity": 10203.39, "margin": 2223.22, "free_margin": 7980.17, "margin_level": 458.94 },
