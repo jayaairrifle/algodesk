@@ -60,6 +60,16 @@ def test_signed_telemetry_is_stored_and_visible(app):
     assert len(samples) == 1 and samples[0]["equity"] == 10203.39
 
 
+
+def test_equity_chart_follows_the_current_account(app):
+    agent = TestClient(app)
+    assert agent_call(agent, "POST", "/agent/telemetry", TELEMETRY).status_code == 200
+    other = TELEMETRY | {"account": TELEMETRY["account"] | {"login": 555001, "equity": 1500.0, "balance": 1500.0}}
+    assert agent_call(agent, "POST", "/agent/telemetry", other).status_code == 200
+    samples = login(app, "viewer").get("/api/equity").json()["samples"]
+    assert [s["equity"] for s in samples] == [1500.0]
+
+
 @pytest.mark.parametrize("kwargs, detail", [
     ({"secret": "x" * 32}, "Tanda tangan"),
     ({"ts": int(time.time()) - 120}, "Timestamp"),

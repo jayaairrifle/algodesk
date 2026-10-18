@@ -716,7 +716,9 @@ body { margin: 0; }
   async function loadState() {
     const st = await api('/state');
     (st.telemetry?.symbols || []).forEach(s => { const prev = S.prevBid[s.symbol]; S.dir[s.symbol] = prev == null ? 0 : Math.sign(s.bid - prev); S.prevBid[s.symbol] = s.bid; });
+    const switched = S.st && st.telemetry && S.st.telemetry?.account?.login !== st.telemetry.account.login;
     S.st = st; S.fetchedAt = Date.now();
+    if (switched) await loadEquity();  // another account logged in: drop the old account's chart now
   }
   const loadEquity = async () => { S.eq = (await api('/equity?hours=' + S.eqHours)).samples; };
   const loadCmds = async () => { S.cmds = (await api('/commands?limit=100')).commands; };

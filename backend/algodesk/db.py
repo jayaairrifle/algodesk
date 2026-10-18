@@ -71,6 +71,10 @@ class DB:
             self.conn.execute("PRAGMA journal_mode=WAL")
             self.conn.execute("PRAGMA foreign_keys=ON")
             self.conn.executescript(SCHEMA)
+            # 0.11: samples carry the account login so a switched account starts a fresh chart.
+            cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(equity_samples)")}
+            if "login" not in cols:
+                self.conn.execute("ALTER TABLE equity_samples ADD COLUMN login INTEGER")
 
     def all(self, sql: str, args: tuple = ()) -> list[sqlite3.Row]:
         with self.lock:

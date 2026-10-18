@@ -206,9 +206,11 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
             "ON CONFLICT(agent_id) DO UPDATE SET received_at = excluded.received_at, payload = excluded.payload",
             (agent_id, now, json.dumps(payload)),
         )
-        last = db.one("SELECT MAX(ts) AS ts FROM equity_samples WHERE agent_id = ?", (agent_id,))
-        if last["ts"] is None or now - last["ts"] >= SAMPLE_EVERY:
-            db.run("INSERT INTO equity_samples (agent_id, ts, equity, balance) VALUES (?, ?, ?, ?)", (agent_id, now, equity, balance))
+        login = account.get("login") if isinstance(account.get("login"), int) else None
+        last = db.one("SELECT ts, login FROM equity_samples WHERE agent_id = ? ORDER BY ts DESC LIMIT 1", (agent_id,))
+        if last is None or last["login"] != login or now - last["ts"] >= SAMPLE_EVERY:
+            db.run("INSERT INTO equity_samples (agent_id, ts, equity, balance, login) VALUES (?, ?, ?, ?, ?)",
+                   (agent_id, now, equity, balance, login))
             db.run("DELETE FROM equity_samples WHERE ts < ?", (now - SAMPLE_KEEP,))
         return {"ok": True}
 
@@ -314,7 +316,11 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
         if chosen is None:
             return {"samples": []}
         since = time.time() - max(1.0, min(hours, 192.0)) * 3600
-        rows = db.all("SELECT ts, equity, balance FROM equity_samples WHERE agent_id = ? AND ts >= ? ORDER BY ts", (chosen, since))
+        # Only the account the terminal is logged in to now; samples of a previous account are left out.
+        tel = db.one("SELECT payload FROM telemetry_latest WHERE agent_id = ?", (chosen,))
+        login = (json.loads(tel["payload"]).get("account") or {}).get("login") if tel else None
+        rows = db.all("SELECT ts, equity, balance FROM equity_samples WHERE agent_id = ? AND ts >= ? AND login IS ? ORDER BY ts",
+                      (chosen, since, login))
         return {"samples": [dict(r) for r in rows]}
 
     # ------------------------------------------------------------------ commands
