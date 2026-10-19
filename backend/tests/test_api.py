@@ -204,3 +204,30 @@ def test_deals_of_another_account_are_not_mixed_in(app):
     agent_call(agent, "POST", "/agent/telemetry", tel)
     agent_call(agent, "POST", "/agent/deals", {"login": 111, "deals": [deal(1, 5, day + 1, "BUY", "IN"), deal(2, 5, day + 9, "SELL", "OUT", net=9)]})
     assert login(app, "viewer").get("/api/eas/stats").json()["eas"] == []
+
+
+def test_usd_idr_rate_falls_back_to_the_next_free_api():
+    from algodesk.fx import UsdIdr
+
+    def fetch(url):
+        if "first" in url:
+            raise OSError("down")
+        if "second" in url:
+            return {"rates": {"IDR": 3.2}}  # nonsense: rejected
+        return {"usd": {"idr": 16250.5}}
+
+    fx = UsdIdr(sources=[("a", "https://first", lambda d: d["rates"]["IDR"]),
+                         ("b", "https://second", lambda d: d["rates"]["IDR"]),
+                         ("c", "https://third", lambda d: d["usd"]["idr"])], fetch=fetch)
+    fx.refresh()
+    assert (fx.rate, fx.source) == (16250.5, "c")
+
+
+def test_fx_endpoint_needs_login_and_returns_the_cached_rate(app):
+    from algodesk.fx import UsdIdr
+
+    app.state.fx = UsdIdr(sources=[("test", "https://x", lambda d: d["r"])], fetch=lambda url: {"r": 16000})
+    app.state.fx.refresh()
+    assert TestClient(app).get("/api/fx").status_code == 401
+    out = login(app, "viewer").get("/api/fx").json()
+    assert out["usd_idr"] == 16000 and out["source"] == "test"

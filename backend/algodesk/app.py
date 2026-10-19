@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from .db import DB
+from .fx import UsdIdr
 from .stats import closed_trades, ea_stats
 from .security import hash_password, new_token, sign, token_hash, verify_password
 
@@ -92,6 +93,7 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
 
     app = FastAPI(title="AlgoDesk", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.db = db
+    app.state.fx = UsdIdr()
 
     seen_signatures: dict[str, float] = {}
     login_fails: dict[str, list[float]] = {}
@@ -414,6 +416,11 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
             "FROM deals WHERE login = ? AND time >= ? ORDER BY time DESC, ticket DESC LIMIT ?",
             (login, day_start, max(1, min(limit, 1000))))
         return {"start": day_start, "deals": [dict(r) for r in rows]}
+
+    @app.get(API + "/fx")
+    def fx(user=Depends(current_user)):
+        """USD/IDR from a free public API, for accounts whose broker has no USDIDR symbol."""
+        return app.state.fx.get()
 
     # ------------------------------------------------------------------ commands
     @app.post(API + "/commands")

@@ -460,8 +460,9 @@ td.c, th.c { text-align: center; }
 
   // ---------- currency ----------
   // Amounts arrive in the account currency (USD, USC/USDc cent accounts, IDR) and are shown in the
-  // currency the viewer picks. USD/IDR comes from the broker's USDIDR symbol when it has one,
-  // otherwise from the rate the viewer enters in Settings. Both choices stay in this browser only.
+  // currency the viewer picks. USD/IDR comes from the broker's USDIDR symbol when it has one (live),
+  // else from the server's free exchange-rate API (daily), else from a rate the viewer enters in
+  // Settings. The picked currency and the manual rate stay in this browser only.
   const pref = { get: k => { try { return localStorage.getItem('algodesk.' + k); } catch { return null; } },
                  set: (k, v) => { try { localStorage.setItem('algodesk.' + k, v); } catch {} } };
   const CURS = ['USD', 'USC', 'IDR'];
@@ -469,7 +470,9 @@ td.c, th.c { text-align: center; }
   const normCur = c => { c = String(c || 'USD').toUpperCase(); return c.startsWith('USC') || c === 'USDC' ? 'USC' : c; };
   const brokerIdr = () => tel()?.fx?.usd_idr || 0;
   const manualIdr = () => parseFloat(pref.get('usdIdr')) || 0;
-  const idrRate = () => brokerIdr() || manualIdr();
+  const apiIdr = () => S.fx?.usd_idr || 0;
+  const idrRate = () => brokerIdr() || apiIdr() || manualIdr();
+  const idrSource = () => brokerIdr() ? 'simbol USDIDR broker (live)' : apiIdr() ? `API kurs ${S.fx.source}` : manualIdr() ? 'kurs manual' : '';
   const usdPer = c => c === 'USD' ? 1 : c === 'USC' ? 0.01 : c === 'IDR' && idrRate() ? 1 / idrRate() : null;
   const acctCur = () => normCur(tel()?.account?.currency);
   const viewCur = () => { const c = S.cur || acctCur(); return usdPer(c) && usdPer(acctCur()) ? c : acctCur(); };
@@ -963,11 +966,11 @@ td.c, th.c { text-align: center; }
         <label>Batas rugi harian (% dari equity awal hari)<input id="limIn" type="number" min="0.5" max="20" step="0.1" value="${p?.limit_pct ?? 3}" ${can('admin') ? '' : 'disabled'}></label>
         <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${can('admin') && !S.pending ? '' : 'disabled'}>Kirim ke agent</button></div>
       </form>${can('admin') ? '' : '<div class="pf">Hanya Super Admin yang dapat mengubah batas rugi.</div>'}</section>
-      <section class="card"><div class="ph"><h2>Mata uang tampilan</h2><span class="muted">Akun dalam ${esc(acctCur())}. USC = USD ÷ 100. Kurs USD/IDR ${brokerIdr() ? 'otomatis dari simbol USDIDR broker: ' + brokerIdr().toLocaleString('id-ID') : 'tidak tersedia di broker, isi manual'}.</span></div>
+      <section class="card"><div class="ph"><h2>Mata uang tampilan</h2><span class="muted">Akun dalam ${esc(acctCur())}. USC = USD ÷ 100. Kurs USD/IDR ${idrRate() ? idrRate().toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' dari ' + idrSource() + (!brokerIdr() && apiIdr() && S.fx.updated ? ', diambil ' + new Date(S.fx.updated * 1000).toLocaleString('id-ID') : '') : 'belum tersedia, isi manual'}.</span></div>
       <form id="fxForm" class="fgrid">
-        <label>Kurs manual 1 USD = … IDR<input id="fxIn" type="number" min="1000" max="100000" step="1" value="${manualIdr() || ''}" placeholder="mis. kurs hari ini" ${brokerIdr() ? 'disabled' : ''}></label>
-        <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${brokerIdr() ? 'disabled' : ''}>Simpan kurs</button></div>
-      </form><div class="pf">Pilihan mata uang dan kurs manual tersimpan di browser ini saja.</div></section>
+        <label>Kurs manual 1 USD = … IDR<input id="fxIn" type="number" min="1000" max="100000" step="1" value="${manualIdr() || ''}" placeholder="mis. kurs hari ini" ${brokerIdr() || apiIdr() ? 'disabled' : ''}></label>
+        <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${brokerIdr() || apiIdr() ? 'disabled' : ''}>Simpan kurs</button></div>
+      </form><div class="pf">Kurs manual hanya dipakai bila simbol USDIDR broker dan API kurs tidak tersedia. Pilihan mata uang tersimpan di browser ini saja.</div></section>
       <section class="card"><div class="ph"><h2>Log perintah</h2><span class="muted">Setiap perintah dicatat dengan pengirim, peran, dan konfirmasi agent</span></div>
       ${S.cmds.length ? `<div class="tw"><table><thead><tr><th>Waktu (server)</th><th>Pengguna</th><th>Perintah</th><th>Status</th><th>Hasil</th></tr></thead><tbody>
       ${S.cmds.map(c => `<tr><td class="num">${srvDayTime(c.issued_at + srvOffset())}</td><td>${esc(c.issued_by)} <span class="muted">(${ROLE_LABEL[c.issued_role] || '–'})</span></td>
@@ -1041,6 +1044,7 @@ td.c, th.c { text-align: center; }
   }
   const loadEquity = async () => { S.eq = (await api('/equity?hours=' + Math.min(192, S.days * 24))).samples; };
   const loadCmds = async () => { S.cmds = (await api('/commands?limit=100')).commands; };
+  const loadFx = async () => { S.fx = await api('/fx'); };
   const loadUsers = async () => { if (can('admin')) S.users = (await api('/users')).users; };
   async function loadStats() {
     const [day, per, tr, dl] = await Promise.all([
@@ -1054,6 +1058,7 @@ td.c, th.c { text-align: center; }
     every(2000, async () => { await loadState(); safeRender(); });
     every(15000, async () => { await loadStats(); safeRender(); });
     every(30000, async () => { await loadEquity(); safeRender(); });
+    every(15000, async () => { if (!S.fx?.usd_idr || Date.now() - S.fxAt > 300000) { await loadFx(); S.fxAt = Date.now(); safeRender(); } });
     every(5000, async () => { if (['settings', 'eas'].includes(S.view)) { await loadCmds(); safeRender(); } });
     S.timers.push(setInterval(() => { tickClock(); const a = $('telAgo'), g = ago(); if (a && g != null) a.textContent = Math.round(g) + ' detik lalu'; }, 1000));
     tickClock();
