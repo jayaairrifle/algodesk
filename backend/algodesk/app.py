@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from .db import DB
+from .stats import closed_trades, ea_stats
 from .security import hash_password, new_token, sign, token_hash, verify_password
 
 API = "/api"
@@ -25,6 +26,9 @@ OFFLINE_AFTER = 15            # agent shown offline when telemetry is older than
 SAMPLE_EVERY = 30             # equity chart resolution in seconds
 SAMPLE_KEEP = 8 * 86400
 MAX_BODY = 512 * 1024
+DEALS_PER_POST = 500
+DEAL_KEEP = 100 * 86400       # deal history kept per account
+PERIOD_DAYS = {"day": 1, "week": 7, "month": 30}
 LOGIN_MAX_FAILS = 5
 LOGIN_LOCK = 300
 
@@ -206,11 +210,51 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
             "ON CONFLICT(agent_id) DO UPDATE SET received_at = excluded.received_at, payload = excluded.payload",
             (agent_id, now, json.dumps(payload)),
         )
-        last = db.one("SELECT MAX(ts) AS ts FROM equity_samples WHERE agent_id = ?", (agent_id,))
-        if last["ts"] is None or now - last["ts"] >= SAMPLE_EVERY:
-            db.run("INSERT INTO equity_samples (agent_id, ts, equity, balance) VALUES (?, ?, ?, ?)", (agent_id, now, equity, balance))
+        login = account.get("login") if isinstance(account.get("login"), int) else None
+        last = db.one("SELECT ts, login FROM equity_samples WHERE agent_id = ? ORDER BY ts DESC LIMIT 1", (agent_id,))
+        if last is None or last["login"] != login or now - last["ts"] >= SAMPLE_EVERY:
+            db.run("INSERT INTO equity_samples (agent_id, ts, equity, balance, login) VALUES (?, ?, ?, ?, ?)",
+                   (agent_id, now, equity, balance, login))
             db.run("DELETE FROM equity_samples WHERE ts < ?", (now - SAMPLE_KEEP,))
         return {"ok": True}
+
+    @app.post(API + "/agent/deals")
+    def agent_deals(auth=Depends(agent_auth)):
+        """Deal history from the terminal, sent in batches; re-sent deals are simply overwritten."""
+        agent_id, payload = auth
+        if not isinstance(payload, dict) or not isinstance(payload.get("login"), int) or not isinstance(payload.get("deals"), list):
+            raise HTTPException(422, "login dan deals wajib diisi")
+        deals = payload["deals"]
+        if len(deals) > DEALS_PER_POST:
+            raise HTTPException(413, f"Maksimal {DEALS_PER_POST} deal per kiriman")
+        login = payload["login"]
+        rows = []
+        for d in deals:
+            if not isinstance(d, dict) or not isinstance(d.get("ticket"), int) or not isinstance(d.get("time"), int):
+                raise HTTPException(422, "Setiap deal wajib punya ticket dan time")
+            def num(k):
+                v = d.get(k)
+                return float(v) if isinstance(v, (int, float)) else 0.0
+            rows.append((
+                login, d["ticket"], agent_id, int(d.get("position") or 0), d["time"],
+                str(d.get("type", ""))[:12], str(d.get("entry", ""))[:8], str(d.get("symbol", ""))[:32],
+                num("volume"), num("price"), num("profit"), num("swap"), num("commission"), num("fee"),
+                int(d.get("magic") or 0), str(d.get("comment", ""))[:64],
+            ))
+        with db.lock:
+            db.conn.executemany(
+                "INSERT INTO deals (login, ticket, agent_id, position_id, time, type, entry, symbol, volume, price, "
+                "profit, swap, commission, fee, magic, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(login, ticket) DO UPDATE SET position_id = excluded.position_id, time = excluded.time, "
+                "type = excluded.type, entry = excluded.entry, symbol = excluded.symbol, volume = excluded.volume, "
+                "price = excluded.price, profit = excluded.profit, swap = excluded.swap, commission = excluded.commission, "
+                "fee = excluded.fee, magic = excluded.magic, comment = excluded.comment",
+                rows,
+            )
+            newest = max((r[4] for r in rows), default=0)
+            if newest:
+                db.conn.execute("DELETE FROM deals WHERE login = ? AND time < ?", (login, newest - DEAL_KEEP))
+        return {"ok": True, "stored": len(rows)}
 
     @app.get(API + "/agent/commands")
     def agent_commands(auth=Depends(agent_auth)):
@@ -314,8 +358,62 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
         if chosen is None:
             return {"samples": []}
         since = time.time() - max(1.0, min(hours, 192.0)) * 3600
-        rows = db.all("SELECT ts, equity, balance FROM equity_samples WHERE agent_id = ? AND ts >= ? ORDER BY ts", (chosen, since))
+        # Only the account the terminal is logged in to now; samples of a previous account are left out.
+        tel = db.one("SELECT payload FROM telemetry_latest WHERE agent_id = ?", (chosen,))
+        login = (json.loads(tel["payload"]).get("account") or {}).get("login") if tel else None
+        rows = db.all("SELECT ts, equity, balance FROM equity_samples WHERE agent_id = ? AND ts >= ? AND login IS ? ORDER BY ts",
+                      (chosen, since, login))
         return {"samples": [dict(r) for r in rows]}
+
+    # ------------------------------------------------------------------ deal history & EA statistics
+    def current_account(agent_id: str | None):
+        """Login, trading-day start (server time) and balance of the account the terminal is on now."""
+        chosen = pick_agent(agent_id)
+        tel = db.one("SELECT payload FROM telemetry_latest WHERE agent_id = ?", (chosen,)) if chosen else None
+        if tel is None:
+            return None, None, None
+        t = json.loads(tel["payload"])
+        account = t.get("account") or {}
+        day_start = (t.get("protection") or {}).get("day_start") or int(t.get("server_time") or time.time()) // 86400 * 86400
+        return account.get("login"), int(day_start), account.get("balance")
+
+    def account_deals(login, since: int):
+        return [dict(r) for r in db.all(
+            "SELECT ticket, position_id, time, type, entry, symbol, volume, price, profit, swap, commission, fee, magic, comment "
+            "FROM deals WHERE login = ? AND time >= ? ORDER BY time, ticket", (login, since))]
+
+    @app.get(API + "/eas/stats")
+    def eas_stats(period: Literal["day", "week", "month"] = "day", agent_id: str | None = None, user=Depends(current_user)):
+        login, day_start, balance = current_account(agent_id)
+        if login is None:
+            return {"period": period, "start": None, "eas": []}
+        start = day_start - (PERIOD_DAYS[period] - 1) * 86400
+        # opening deals of trades closed in the period can be older than the period itself
+        trades = closed_trades(account_deals(login, start - 30 * 86400), start)
+        return {"period": period, "start": start, "eas": ea_stats(trades, balance)}
+
+    @app.get(API + "/trades")
+    def trades(days: int = 7, magic: int | None = None, agent_id: str | None = None, user=Depends(current_user)):
+        login, day_start, _ = current_account(agent_id)
+        if login is None:
+            return {"trades": []}
+        start = day_start - (max(1, min(days, 90)) - 1) * 86400
+        out = closed_trades(account_deals(login, start - 30 * 86400), start)
+        if magic is not None:
+            out = [t for t in out if t["magic"] == magic]
+        return {"start": start, "trades": out[::-1][:1000]}
+
+    @app.get(API + "/deals")
+    def deals(limit: int = 200, agent_id: str | None = None, user=Depends(current_user)):
+        """Today's deals, newest first: the trade events of the EA log."""
+        login, day_start, _ = current_account(agent_id)
+        if login is None:
+            return {"deals": []}
+        rows = db.all(
+            "SELECT ticket, position_id, time, type, entry, symbol, volume, price, profit, swap, commission, fee, magic, comment "
+            "FROM deals WHERE login = ? AND time >= ? ORDER BY time DESC, ticket DESC LIMIT ?",
+            (login, day_start, max(1, min(limit, 1000))))
+        return {"start": day_start, "deals": [dict(r) for r in rows]}
 
     # ------------------------------------------------------------------ commands
     @app.post(API + "/commands")

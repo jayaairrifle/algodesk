@@ -30,22 +30,53 @@ SYMBOLS = [
 
 
 class Sim:
-    def __init__(self, loss_drift: float):
+    def __init__(self, loss_drift: float, usd_idr: float = 0.0):
+        self.usd_idr = usd_idr
         self.symbols = [dict(zip(("symbol", "bid", "digits", "point", "spread", "rsi", "atr", "structure"), s)) for s in SYMBOLS]
+        for s in self.symbols:
+            s["open"] = s["bid"] * (1 + random.gauss(0, 0.003))
         self.balance = 10246.38
         self.baseline = 10246.38
+        self.day_balance = self.balance
         self.day_start = int(time.time()) // 86400 * 86400
         self.limit_pct = 3.0
         self.paused = False
         self.blocked = False
         self.disabled: set[int] = set()
         self.loss_drift = loss_drift
+        self.ticket = 900000
+        self.deals: list[dict] = []
+        self.sync_from = 0
+        # 30 days of closed trades for four simulated EAs: (magic, symbol, trades per day, edge)
+        self.bots = [(2001, "XAUUSD", 3, 4.0), (2002, "XAUUSD", 2, 1.5), (1001, "EURUSD", 1, -0.5), (2003, "USDJPY", 2, 2.0)]
+        now = int(time.time())
+        for day in range(30, -1, -1):
+            for magic, sym, per_day, edge in self.bots:
+                for _ in range(random.randint(0, per_day)):
+                    closed = self.day_start - day * 86400 + random.randint(600, 86000)
+                    if closed < now - 60:
+                        self.add_trade(magic, sym, closed, round(random.gauss(edge, 12), 2))
         self.positions = [
             {"ticket": 5001, "symbol": "EURUSD", "side": "BUY", "volume": 0.02, "price_open": 1.08553, "sl": 1.08112,
-             "tp": 1.08920, "magic": 260101, "comment": "AlgoDashboardAgent", "time": int(time.time()) - 7200, "contract": 100000},
+             "tp": 1.08920, "magic": 2003, "comment": "Bounce Area", "time": int(time.time()) - 7200, "contract": 100000},
             {"ticket": 5002, "symbol": "XAUUSD", "side": "SELL", "volume": 0.01, "price_open": 2676.03, "sl": 2689.00,
-             "tp": 2657.20, "magic": 180221, "comment": "EA Trend Demo", "time": int(time.time()) - 3600, "contract": 100},
+             "tp": 2657.20, "magic": 2001, "comment": "SNR M15", "time": int(time.time()) - 3600, "contract": 100},
         ]
+
+    def add_trade(self, magic, symbol, closed, net):
+        s = self.sym(symbol)
+        side = random.choice(("BUY", "SELL"))
+        opened = closed - random.randint(300, 7200)
+        price = round(s["bid"] * (1 + random.gauss(0, 0.002)), s["digits"])
+        pos = self.ticket = self.ticket + 2
+        common = {"position": pos, "symbol": symbol, "volume": 0.1, "swap": 0, "fee": 0, "magic": magic, "comment": ""}
+        self.deals.append(common | {"ticket": pos, "time": opened, "type": side, "entry": "IN", "price": price,
+                                    "profit": 0, "commission": -0.3})
+        self.deals.append(common | {"ticket": pos + 1, "time": closed, "type": "SELL" if side == "BUY" else "BUY",
+                                    "entry": "OUT", "price": round(price * (1 + (net / 4000 if side == "BUY" else -net / 4000)), s["digits"]), "profit": round(net + 0.3, 2), "commission": 0})
+
+    def realized_today(self):
+        return round(sum(d["profit"] + d["commission"] for d in self.deals if d["time"] >= self.day_start), 2)
 
     def sym(self, name):
         return next(s for s in self.symbols if s["symbol"] == name)
@@ -54,6 +85,13 @@ class Sim:
         for s in self.symbols:
             s["bid"] = max(s["point"], s["bid"] + random.gauss(0, 1) * s["atr"] * s["point"] * 0.05)
             s["rsi"] = min(85, max(15, s["rsi"] + random.gauss(0, 0.6) + (50 - s["rsi"]) * 0.01))
+        # now and then an EA that is allowed to trade closes a trade
+        if random.random() < 0.02 and not self.blocked and not self.paused:
+            magic, sym, _, edge = random.choice(self.bots)
+            if magic not in self.disabled:
+                net = round(random.gauss(edge, 12), 2)
+                self.add_trade(magic, sym, int(time.time()), net)
+                self.balance += net
         # optional steady loss to watch the protection trigger
         self.balance -= self.loss_drift
         if not self.blocked and self.baseline - self.equity() >= self.baseline * self.limit_pct / 100:
@@ -86,19 +124,28 @@ class Sim:
             "terminal_connected": True,
             "account": {"login": 884921, "server": "Broker-Demo 01", "company": "Broker Demo", "currency": "USD", "demo": True,
                         "balance": round(self.balance, 2), "equity": round(eq, 2), "margin": margin,
-                        "free_margin": round(eq - margin, 2), "margin_level": round(eq / margin * 100, 2)},
+                        "free_margin": round(eq - margin, 2), "margin_level": round(eq / margin * 100, 2),
+                        "margin_call": 100.0, "stop_out": 50.0, "leverage": 500},
             "protection": {"day_start": self.day_start, "baseline": self.baseline, "limit_pct": self.limit_pct,
                            "limit_amount": round(self.baseline * self.limit_pct / 100, 2),
                            "loss_used": round(max(0.0, self.baseline - eq), 2), "entry_state": self.entry_state(),
                            "disabled_magics": sorted(self.disabled)},
+            "pl": {"realized": self.realized_today(), "floating": round(eq - self.balance, 2), "closed_deals": 0},
+            "fx": {"usd_idr": self.usd_idr},
+            "terminal": {"build": 4755, "memory_mb": 346, "memory_total_mb": 8192, "cpu_cores": 4, "ping_ms": 38.2, "trade_allowed": True},
             "positions": [{k: v for k, v in p.items() if k != "contract"}
                           | {"profit": self.profit(p), "digits": self.sym(p["symbol"])["digits"]} for p in self.positions],
             "symbols": [{"symbol": s["symbol"], "digits": s["digits"], "bid": round(s["bid"], s["digits"]),
-                         "ask": round(s["bid"] + s["spread"] * s["point"], s["digits"]), "spread": s["spread"],
+                         "ask": round(s["bid"] + s["spread"] * s["point"], s["digits"]), "spread": s["spread"], "day_open": round(s["open"], s["digits"]),
                          "rsi": round(s["rsi"], 1), "atr_points": s["atr"], "structure": s["structure"], "signal": signal(s)}
                         for s in self.symbols],
             "timeframe": "H1",
         }
+
+    def pending_deals(self):
+        """Deals from the sync cursor on, 300 at a time, like the MQL5 agent."""
+        batch = sorted((d for d in self.deals if d["time"] >= self.sync_from), key=lambda d: (d["time"], d["ticket"]))[:300]
+        return batch
 
     def apply(self, cmd):
         t = cmd.get("type")
@@ -142,10 +189,12 @@ def main():
     ap.add_argument("--secret", required=True)
     ap.add_argument("--interval", type=float, default=2.0)
     ap.add_argument("--loss-drift", type=float, default=0.0, help="USD rugi per langkah, untuk menguji proteksi")
+    ap.add_argument("--usd-idr", type=float, default=0.0, help="kurs USDIDR broker; 0 = broker tidak punya simbol USDIDR")
     args = ap.parse_args()
 
-    sim = Sim(args.loss_drift)
+    sim = Sim(args.loss_drift, args.usd_idr)
     print(f"Agent tiruan {args.agent} mengirim ke {args.url} (Ctrl+C untuk berhenti)")
+    last_sync = 0.0
     while True:
         try:
             sim.step()
@@ -155,6 +204,12 @@ def main():
                 request(args.url, "/agent/commands/ack", "POST", args.agent, args.secret,
                         {"id": cmd["id"], "ok": ok, "message": msg, "entry_state": sim.entry_state(), "applied_at": int(time.time())})
             request(args.url, "/agent/telemetry", "POST", args.agent, args.secret, sim.telemetry(args.agent))
+            if time.time() - last_sync >= 15:
+                last_sync = time.time()
+                batch = sim.pending_deals()
+                if batch:
+                    request(args.url, "/agent/deals", "POST", args.agent, args.secret, {"login": 884921, "deals": batch})
+                    sim.sync_from = batch[-1]["time"]
         except urllib.error.HTTPError as e:
             print(f"HTTP {e.code}: {e.read().decode(errors='replace')}")
         except (urllib.error.URLError, TimeoutError) as e:

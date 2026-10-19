@@ -48,7 +48,7 @@ input double InpRsiBuy            = 55.0;   // RSI minimal untuk sinyal BUY (den
 input double InpRsiSell           = 45.0;   // RSI maksimal untuk sinyal SELL (dengan struktur LH/LL)
 input int    InpMaxSymbols        = 20;
 
-#define AGENT_VERSION "0.10"
+#define AGENT_VERSION "0.13"
 
 CTrade   g_trade;
 long     g_watch[];
@@ -57,6 +57,7 @@ int      g_rsi[];
 int      g_atr[];
 datetime g_lastTelemetry = 0;
 datetime g_lastPoll      = 0;
+datetime g_lastDealSync  = 0;
 datetime g_lastBackendOk = 0;
 string   g_lastError     = "";
 bool     g_limitLogged   = false;
@@ -74,12 +75,47 @@ datetime CurrentDayStart()
    return StructToTime(t) + h * 3600;
   }
 
+// Balance at the start of the trading day: current balance minus every deal since then
+// (trades, deposits, withdrawals, credit). Used to check that a stored baseline belongs to this account.
+double DayStartBalance()
+  {
+   double bal = AccountInfoDouble(ACCOUNT_BALANCE);
+   if(!HistorySelect(CurrentDayStart(), TimeTradeServer() + 60))
+      return bal;
+   for(int i = 0; i < HistoryDealsTotal(); i++)
+     {
+      ulong t = HistoryDealGetTicket(i);
+      if(t != 0)
+         bal -= HistoryDealGetDouble(t, DEAL_PROFIT) + HistoryDealGetDouble(t, DEAL_SWAP)
+                + HistoryDealGetDouble(t, DEAL_COMMISSION) + HistoryDealGetDouble(t, DEAL_FEE);
+     }
+   return bal;
+  }
+
 void EnsureBaseline()
   {
-   datetime dayStart = CurrentDayStart();
-   if((datetime)(long)AD_Get("DAY", 0.0) == dayStart && AD_Get("BASE", 0.0) > 0.0)
+   // Right after start-up or an account switch the terminal can still report the previous
+   // account's equity; wait until it is connected to the logged-in account.
+   if(!TerminalInfoInteger(TERMINAL_CONNECTED) || AccountInfoInteger(ACCOUNT_LOGIN) == 0
+      || AccountInfoDouble(ACCOUNT_BALANCE) <= 0.0)
       return;
+   datetime dayStart = CurrentDayStart();
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   double base = AD_Get("BASE", 0.0);
+   if((datetime)(long)AD_Get("DAY", 0.0) == dayStart && base > 0.0)
+     {
+      // A baseline far from this account's start-of-day balance was taken from stale data
+      // (another account or currency): replace it and lift the block it caused.
+      double ref = DayStartBalance();
+      if(ref <= 0.0 || MathAbs(base - ref) <= 0.5 * ref)
+         return;
+      AD_Set("BASE", ref);
+      AD_Set("BLOCK", 0.0);
+      g_limitLogged = false;
+      PrintFormat("AlgoDesk: baseline %.2f tidak cocok dengan akun %I64d, diganti %.2f",
+                  base, AccountInfoInteger(ACCOUNT_LOGIN), ref);
+      return;
+     }
    AD_Set("DAY", (double)dayStart);
    AD_Set("BASE", equity);
    AD_Set("BLOCK", 0.0);
@@ -91,6 +127,40 @@ double Baseline()   { return AD_Get("BASE", 0.0); }
 double LimitPct()   { return AD_Get("LIMIT_PCT", InpLossLimitPct); }
 double LossLimit()  { return Baseline() * LimitPct() / 100.0; }
 double LossUsed()   { return MathMax(0.0, Baseline() - AccountInfoDouble(ACCOUNT_EQUITY)); }
+
+// Closed-trade result since the start of the trading day, as in the MT5 History tab:
+// profit + swap + commission + fee of buy/sell deals. Deposits and withdrawals are excluded.
+double RealizedToday(int &deals)
+  {
+   deals = 0;
+   double sum = 0.0;
+   if(!HistorySelect(CurrentDayStart(), TimeTradeServer() + 60))
+      return 0.0;
+   for(int i = 0; i < HistoryDealsTotal(); i++)
+     {
+      ulong t = HistoryDealGetTicket(i);
+      if(t == 0)
+         continue;
+      long type = HistoryDealGetInteger(t, DEAL_TYPE);
+      if(type != DEAL_TYPE_BUY && type != DEAL_TYPE_SELL)
+         continue;
+      sum += HistoryDealGetDouble(t, DEAL_PROFIT) + HistoryDealGetDouble(t, DEAL_SWAP)
+             + HistoryDealGetDouble(t, DEAL_COMMISSION) + HistoryDealGetDouble(t, DEAL_FEE);
+      if(HistoryDealGetInteger(t, DEAL_ENTRY) != DEAL_ENTRY_IN)
+         deals++;
+     }
+   return sum;
+  }
+
+// Open-position result, as the Profit column total in the MT5 Trade tab (profit + swap).
+double FloatingPl()
+  {
+   double sum = 0.0;
+   for(int i = 0; i < PositionsTotal(); i++)
+      if(PositionGetTicket(i) != 0)
+         sum += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+   return sum;
+  }
 
 string EntryStateText()
   {
@@ -216,6 +286,22 @@ void BuildSymbols()
       g_rsi[i]  = iRSI(g_syms[i], InpSignalTf, InpRsiPeriod, PRICE_CLOSE);
       g_atr[i]  = iATR(g_syms[i], InpSignalTf, InpAtrPeriod);
      }
+  }
+
+// USD/IDR rate from the broker, for the dashboard's currency conversion.
+// Uses the first symbol named like USDIDR (suffixes such as USDIDR.m are fine); 0 when the broker has none.
+double UsdIdrRate()
+  {
+   for(int i = 0; i < SymbolsTotal(false); i++)
+     {
+      string name = SymbolName(i, false);
+      if(StringFind(name, "USDIDR") != 0)
+         continue;
+      double bid = SymbolInfoDouble(name, SYMBOL_BID);
+      if(bid > 0.0)
+         return bid;
+     }
+   return 0.0;
   }
 
 double LastValue(const int handle)
@@ -493,6 +579,7 @@ string SymbolsJson()
            + ",\"digits\":" + IntegerToString(d)
            + ",\"bid\":" + N(SymbolInfoDouble(sym, SYMBOL_BID), d)
            + ",\"ask\":" + N(SymbolInfoDouble(sym, SYMBOL_ASK), d)
+           + ",\"day_open\":" + N(iOpen(sym, PERIOD_D1, 0), d)
            + ",\"spread\":" + IntegerToString(SymbolInfoInteger(sym, SYMBOL_SPREAD))
            + ",\"rsi\":" + N(rsi, 1)
            + ",\"atr_points\":" + N(atrPts, 1)
@@ -523,6 +610,8 @@ string DisabledMagicsJson()
 void SendTelemetry()
   {
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   int closedDeals = 0;
+   double realized = RealizedToday(closedDeals);
    string body = "{" +
       "\"agent_id\":" + J(InpAgentId)
       + ",\"agent_version\":" + J(AGENT_VERSION)
@@ -540,6 +629,9 @@ void SendTelemetry()
          + ",\"margin\":" + N(AccountInfoDouble(ACCOUNT_MARGIN))
          + ",\"free_margin\":" + N(AccountInfoDouble(ACCOUNT_MARGIN_FREE))
          + ",\"margin_level\":" + N(AccountInfoDouble(ACCOUNT_MARGIN_LEVEL))
+         + ",\"margin_call\":" + N(AccountInfoDouble(ACCOUNT_MARGIN_SO_CALL))
+         + ",\"stop_out\":" + N(AccountInfoDouble(ACCOUNT_MARGIN_SO_SO))
+         + ",\"leverage\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LEVERAGE))
       + "}"
       + ",\"protection\":{" +
          "\"day_start\":" + IntegerToString((long)AD_Get("DAY", 0.0))
@@ -550,12 +642,108 @@ void SendTelemetry()
          + ",\"entry_state\":" + J(EntryStateText())
          + ",\"disabled_magics\":" + DisabledMagicsJson()
       + "}"
+      + ",\"pl\":{" +
+         "\"realized\":" + N(realized)
+         + ",\"floating\":" + N(FloatingPl())
+         + ",\"closed_deals\":" + IntegerToString(closedDeals)
+      + "}"
+      + ",\"fx\":{\"usd_idr\":" + N(UsdIdrRate(), 2) + "}"
+      + ",\"terminal\":{" +
+         "\"build\":" + IntegerToString(TerminalInfoInteger(TERMINAL_BUILD))
+         + ",\"memory_mb\":" + IntegerToString(TerminalInfoInteger(TERMINAL_MEMORY_USED))
+         + ",\"memory_total_mb\":" + IntegerToString(TerminalInfoInteger(TERMINAL_MEMORY_PHYSICAL))
+         + ",\"cpu_cores\":" + IntegerToString(TerminalInfoInteger(TERMINAL_CPU_CORES))
+         + ",\"ping_ms\":" + N(TerminalInfoInteger(TERMINAL_PING_LAST) / 1000.0, 1)
+         + ",\"trade_allowed\":" + (TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) ? "true" : "false")
+      + "}"
       + ",\"positions\":" + PositionsJson()
       + ",\"symbols\":" + SymbolsJson()
       + ",\"timeframe\":" + J(StringSubstr(EnumToString(InpSignalTf), 7))
       + "}";
    string resp;
    Http("POST", "/agent/telemetry", body, resp);
+  }
+
+//+------------------------------------------------------------------+
+//| Deal history                                                     |
+//+------------------------------------------------------------------+
+string DealTypeText(const long t)
+  {
+   switch((int)t)
+     {
+      case DEAL_TYPE_BUY:     return "BUY";
+      case DEAL_TYPE_SELL:    return "SELL";
+      case DEAL_TYPE_BALANCE: return "BALANCE";
+      case DEAL_TYPE_CREDIT:  return "CREDIT";
+      case DEAL_TYPE_BONUS:   return "BONUS";
+      default:                return "OTHER";
+     }
+  }
+
+string DealEntryText(const long e)
+  {
+   switch((int)e)
+     {
+      case DEAL_ENTRY_IN:    return "IN";
+      case DEAL_ENTRY_OUT:   return "OUT";
+      case DEAL_ENTRY_INOUT: return "INOUT";
+      case DEAL_ENTRY_OUT_BY: return "OUT_BY";
+      default:               return "";
+     }
+  }
+
+// Sends deals in time order from a cursor kept per account (Global Variable AD_<login>_DSYNC),
+// at most 300 per request; the first run covers the last 31 days. Deals at the cursor second
+// are sent again on the next run, which the backend treats as an update.
+void SyncDeals()
+  {
+   if(!TerminalInfoInteger(TERMINAL_CONNECTED) || AccountInfoInteger(ACCOUNT_LOGIN) == 0)
+      return;
+   datetime now = TimeTradeServer();
+   datetime from = (datetime)(long)AD_Get("DSYNC", 0.0);
+   if(from < now - 31 * 86400)
+      from = now - 31 * 86400;
+   if(!HistorySelect(from, now + 60))
+      return;
+   string s = "[";
+   int n = 0;
+   datetime newest = from;
+   for(int i = 0; i < HistoryDealsTotal() && n < 300; i++)
+     {
+      ulong t = HistoryDealGetTicket(i);
+      if(t == 0)
+         continue;
+      datetime tm = (datetime)HistoryDealGetInteger(t, DEAL_TIME);
+      if(tm < from)
+         continue;
+      string sym = HistoryDealGetString(t, DEAL_SYMBOL);
+      int d = (sym == "") ? 2 : (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      if(n++ > 0) s += ",";
+      s += "{\"ticket\":" + IntegerToString((long)t)
+           + ",\"position\":" + IntegerToString(HistoryDealGetInteger(t, DEAL_POSITION_ID))
+           + ",\"time\":" + IntegerToString((long)tm)
+           + ",\"type\":" + J(DealTypeText(HistoryDealGetInteger(t, DEAL_TYPE)))
+           + ",\"entry\":" + J(DealEntryText(HistoryDealGetInteger(t, DEAL_ENTRY)))
+           + ",\"symbol\":" + J(sym)
+           + ",\"volume\":" + N(HistoryDealGetDouble(t, DEAL_VOLUME), 2)
+           + ",\"price\":" + N(HistoryDealGetDouble(t, DEAL_PRICE), d)
+           + ",\"profit\":" + N(HistoryDealGetDouble(t, DEAL_PROFIT), 2)
+           + ",\"swap\":" + N(HistoryDealGetDouble(t, DEAL_SWAP), 2)
+           + ",\"commission\":" + N(HistoryDealGetDouble(t, DEAL_COMMISSION), 2)
+           + ",\"fee\":" + N(HistoryDealGetDouble(t, DEAL_FEE), 2)
+           + ",\"magic\":" + IntegerToString(HistoryDealGetInteger(t, DEAL_MAGIC))
+           + ",\"comment\":" + J(HistoryDealGetString(t, DEAL_COMMENT))
+           + "}";
+      if(tm > newest)
+         newest = tm;
+     }
+   if(n == 0)
+      return;
+   string body = "{\"login\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + ",\"deals\":" + s + "]}";
+   string resp;
+   int code = Http("POST", "/agent/deals", body, resp);
+   if(code >= 200 && code < 300)
+      AD_Set("DSYNC", (double)newest);
   }
 
 //+------------------------------------------------------------------+
@@ -705,6 +893,11 @@ void OnTimer()
         {
          g_lastTelemetry = now;
          SendTelemetry();
+        }
+      if(now - g_lastDealSync >= 15)
+        {
+         g_lastDealSync = now;
+         SyncDeals();
         }
      }
    ShowStatus();

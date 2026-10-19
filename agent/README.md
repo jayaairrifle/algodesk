@@ -71,12 +71,14 @@ Dikirim tiap `InpTelemetrySec` detik.
 
 ```json
 {
-  "agent_id": "vps-01", "agent_version": "0.10", "sent_at": 1792027095, "server_time": 1792052295,
+  "agent_id": "vps-01", "agent_version": "0.13", "sent_at": 1792027095, "server_time": 1792052295,
   "terminal_connected": true,
   "account": { "login": 884921, "server": "Broker-Demo 01", "company": "...", "currency": "USD", "demo": true,
                "balance": 10246.38, "equity": 10203.39, "margin": 2223.22, "free_margin": 7980.17, "margin_level": 458.94 },
   "protection": { "day_start": 1792022400, "baseline": 10246.38, "limit_pct": 3.00, "limit_amount": 307.39,
                   "loss_used": 42.99, "entry_state": "allowed", "disabled_magics": [] },
+  "pl": { "realized": 0.00, "floating": -42.99, "closed_deals": 0 },
+  "fx": { "usd_idr": 0 },
   "positions": [ { "ticket": 123, "symbol": "EURUSD", "digits": 5, "side": "BUY", "volume": 0.02, "price_open": 1.08553,
                    "sl": 1.08112, "tp": 1.08920, "profit": -18.20, "magic": 260101, "comment": "", "time": 1792039000 } ],
   "symbols": [ { "symbol": "EURUSD", "digits": 5, "bid": 1.08462, "ask": 1.08471, "spread": 9, "rsi": 56.8,
@@ -85,7 +87,21 @@ Dikirim tiap `InpTelemetrySec` detik.
 }
 ```
 
-`entry_state`: `allowed`, `paused`, atau `blocked`. `atr_points` dalam point simbol (broker 5 digit: 10 point = 1 pip).
+`entry_state`: `allowed`, `paused`, atau `blocked`. `pl.realized` adalah hasil deal tertutup sejak awal hari server (profit + swap + komisi + fee, tanpa deposit/penarikan), sama seperti tab History MT5. `pl.floating` adalah profit + swap posisi terbuka. `fx.usd_idr` diambil dari simbol `USDIDR*` broker, atau 0 kalau broker tidak menyediakannya. `atr_points` dalam point simbol (broker 5 digit: 10 point = 1 pip).
+
+`terminal` (0.13) berisi `build`, `memory_mb`, `memory_total_mb`, `cpu_cores`, `ping_ms`, dan `trade_allowed`. Setiap simbol juga membawa `day_open` (harga buka D1), dan `account` membawa `margin_call`, `stop_out`, serta `leverage`.
+
+### `POST /agent/deals`
+
+Dikirim setiap 15 detik (agent 0.13). Isinya riwayat deal sejak kursor per akun (Global Variable `AD_<login>_DSYNC`). Kiriman pertama mencakup 31 hari terakhir, dengan maksimal 300 deal per request. Deal yang terkirim ulang hanya menimpa data yang sama.
+
+```json
+{ "login": 884921, "deals": [ { "ticket": 900101, "position": 900100, "time": 1792039000, "type": "SELL", "entry": "OUT",
+  "symbol": "XAUUSD", "volume": 0.10, "price": 2639.80, "profit": 12.80, "swap": 0.00, "commission": -0.30, "fee": 0.00,
+  "magic": 2001, "comment": "" } ] }
+```
+
+`type`: `BUY`, `SELL`, `BALANCE`, `CREDIT`, `BONUS`, atau `OTHER`. `entry`: `IN`, `OUT`, `INOUT`, atau `OUT_BY`. `time` memakai jam server broker. Backend memakai riwayat ini untuk statistik per EA, Trade History, dan EA Logs.
 
 ### `GET /agent/commands`
 
