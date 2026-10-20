@@ -837,19 +837,18 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     const rows = ps.map((p, i) => { const s = sym(p.symbol), d = p.digits ?? 2, cur = s ? (p.side === 'BUY' ? s.bid : s.ask) : null;
       const move = cur && p.price_open ? (p.side === 'BUY' ? 1 : -1) * (cur - p.price_open) / p.price_open * 100 : null;
       return `<tr><td>${i + 1}</td><td><b>${esc(p.symbol)}</b></td><td><span class="side-b ${p.side === 'BUY' ? 'buy' : 'sell'}">${p.side}</span></td>
-        <td class="r num">${Number(p.volume).toFixed(2)}</td><td class="r num">${fmtPx(p.price_open, d)}</td><td class="r num">${fmtPx(cur, d)}</td>
+        <td class="r num">${Number(p.volume).toFixed(2)}</td>${compact ? '' : `<td class="r num">${fmtPx(p.price_open, d)}</td>`}<td class="r num">${fmtPx(cur, d)}</td>
         ${compact ? '' : `<td class="r num">${p.sl ? fmtPx(p.sl, d) : '–'}</td><td class="r num">${p.tp ? fmtPx(p.tp, d) : '–'}</td>`}
-        ${compact ? `<td class="r num ${cls(p.profit)}">${fmtNum(p.profit, true)}</td>` : plCells(p.profit)}<td class="r num ${cls(move)}">${pct(move)}</td>
-        <td class="num">${dur(now - p.time)}</td><td class="num" title="${esc(eaLabel(p.magic))}">${p.magic || 'Manual'}</td><td><span class="bkt">${basketId(p.magic, p.symbol)}</span></td></tr>`; }).join('');
+        ${plCells(p.profit)}<td class="r num ${cls(move)}">${pct(move)}</td>
+        ${compact ? '' : `<td class="num">${dur(now - p.time)}</td>`}<td class="num" title="${esc(eaLabel(p.magic))}">${p.magic || 'Manual'}</td>${compact ? '' : `<td><span class="bkt">${basketId(p.magic, p.symbol)}</span></td>`}</tr>`; }).join('');
     return `<section class="card"><div class="ph"><h2>Open Positions (${ps.length}) <span class="chip g"><span class="dot g"></span>Real-Time</span></h2>
       ${compact ? `<button class="btn icon outline" data-go="positions" aria-label="Buka semua posisi">${icon('i-expand')}</button>` : ''}</div>
-      <div class="tw"><table><thead><tr><th>#</th><th>Symbol</th><th>Type</th><th class="r">Volume</th><th class="r">Open Price</th><th class="r">Current Price</th>
-      ${compact ? `<th class="r">P/L (${viewCur()})</th>` : `<th class="r">SL</th><th class="r">TP</th>${PL_CURS.map(c => `<th class="r">P/L (${c})</th>`).join('')}`}<th class="r">P/L (%)</th><th>Duration</th><th>Magic</th><th>Basket</th></tr></thead>
+      <div class="tw"><table><thead><tr><th>#</th><th>Symbol</th><th>Type</th><th class="r">Volume</th>${compact ? '' : '<th class="r">Open Price</th>'}<th class="r">Current Price</th>
+      ${compact ? '' : '<th class="r">SL</th><th class="r">TP</th>'}${PL_CURS.map(c => `<th class="r">P/L (${c})</th>`).join('')}<th class="r">P/L (%)</th>${compact ? '<th>Magic</th>' : '<th>Duration</th><th>Magic</th><th>Basket</th>'}</tr></thead>
       <tbody>${rows || `<tr><td colspan="15" class="empty">Tidak ada posisi terbuka.</td></tr>`}</tbody>
       ${ps.length ? (() => { const pl = sum(ps, p => p.profit);
-        return `<tfoot><tr><td></td><td colspan="2"><b>Total</b></td><td class="r num"><b>${sum(ps, p => p.volume).toFixed(2)}</b></td><td></td><td></td>
-        ${compact ? `<td class="r num ${cls(pl)}"><b>${fmtNum(pl, true)}</b></td>` : `<td></td><td></td>${plCells(pl, true)}`}
-        <td class="r num ${cls(pl)}" title="Total P/L terhadap balance akun"><b>${pct(balPct(pl))}</b></td><td colspan="3" class="muted">dari balance</td></tr></tfoot>`; })() : ''}</table></div>
+        return `<tfoot><tr><td></td><td colspan="2"><b>Total</b></td><td class="r num"><b>${sum(ps, p => p.volume).toFixed(2)}</b></td>${compact ? '<td></td>' : '<td></td><td></td><td></td><td></td>'}${plCells(pl, true)}
+        <td class="r num ${cls(pl)}" title="Total P/L terhadap balance akun"><b>${pct(balPct(pl))}</b></td>${compact ? '<td></td>' : '<td colspan="3" class="muted">dari balance</td>'}</tr></tfoot>`; })() : ''}</table></div>
       ${compact ? '' : `<div class="pf">${idrRate() ? `Total P/L (%) = total P/L dibagi balance akun. Kurs 1 USD = ${idrRate().toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDR (${idrSource()}); 1 USD = 100 USC. ` : 'IDR muncul setelah kurs USD/IDR tersedia. '}Posisi ditutup oleh EA masing-masing atau di MT5. Dashboard hanya bisa menghentikan entry baru per EA.</div>`}</section>`;
   }
   function basketCard(full) {
