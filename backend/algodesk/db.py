@@ -95,6 +95,10 @@ class DB:
             cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(equity_samples)")}
             if "login" not in cols:
                 self.conn.execute("ALTER TABLE equity_samples ADD COLUMN login INTEGER")
+            # 0.15: strategy commands carry their settings as a JSON object.
+            cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(commands)")}
+            if "params" not in cols:
+                self.conn.execute("ALTER TABLE commands ADD COLUMN params TEXT")
 
     def all(self, sql: str, args: tuple = ()) -> list[sqlite3.Row]:
         with self.lock:

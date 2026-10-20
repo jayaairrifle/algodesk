@@ -11,15 +11,18 @@
 //|    the backend, signed with HMAC-SHA256.                         |
 //| 4. Commands: polls the backend for pause/resume/enable/disable/  |
 //|    set_limit commands and acknowledges each one.                 |
+//| 5. Strategy: XAU StopReverse (StopReverse.mqh), switched on/off  |
+//|    and tuned from the dashboard (sr_set / sr_close commands).    |
 //|                                                                  |
 //| Attach to ONE chart per terminal/account.                        |
 //+------------------------------------------------------------------+
 #property copyright "AlgoDesk"
-#property version   "0.14"
-#property description "AlgoDesk MT5 Agent: proteksi rugi harian, telemetri, dan kanal perintah."
+#property version   "0.15"
+#property description "AlgoDesk MT5 Agent: proteksi rugi harian, telemetri, kanal perintah, dan strategi StopReverse."
 
 #include <Trade/Trade.mqh>
 #include <AlgoDesk/AlgoDeskGuard.mqh>
+#include <AlgoDesk/StopReverse.mqh>
 
 //--- protection
 input group "Proteksi harian"
@@ -49,7 +52,13 @@ input double InpRsiSell           = 45.0;   // RSI maksimal untuk sinyal SELL (d
 input int    InpMaxSymbols        = 20;
 input bool   InpAllTimeframes     = true;   // Hitung RSI/ATR/struktur di semua timeframe M1..MN untuk pilihan di dashboard
 
-#define AGENT_VERSION "0.14"
+//--- strategy (ON/OFF, symbol, lot, D and S are set from the dashboard)
+input group "Strategi StopReverse"
+input ulong  InpSrMagic           = 777001; // Magic number StopReverse
+input int    InpSrSlippage        = 30;     // Slippage maksimal (points)
+input bool   InpSrLogCSV          = true;   // Catat transaksi & error ke MQL5\Files\AlgoDesk
+
+#define AGENT_VERSION "0.15"
 
 // Timeframes the dashboard's Market Watch can switch between.
 #define NTF 9
@@ -246,6 +255,8 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
                         const MqlTradeRequest &request,
                         const MqlTradeResult &result)
   {
+   if(trans.type == TRADE_TRANSACTION_DEAL_ADD)
+      SR_OnDeal(trans.deal);
    if(!InpCloseBlockedEntry || trans.type != TRADE_TRANSACTION_DEAL_ADD)
       return;
    if(!HistoryDealSelect(trans.deal))
@@ -695,6 +706,7 @@ void SendTelemetry()
       + ",\"positions\":" + PositionsJson()
       + ",\"symbols\":" + SymbolsJson()
       + ",\"timeframe\":" + J(StringSubstr(EnumToString(SignalTf()), 7))
+      + ",\"strategies\":[" + SR_Json() + "]"
       + "}";
    string resp;
    Http("POST", "/agent/telemetry", body, resp);
@@ -825,6 +837,11 @@ bool ApplyCommand(const string type, const string obj, string &msg)
       CheckLimit();
       return true;
      }
+   if(type == "sr_set")
+      return SR_Set(JsonValue(obj, "enabled"), JsonValue(obj, "symbol"), JsonValue(obj, "lots"),
+                    JsonValue(obj, "dist"), JsonValue(obj, "step"), msg);
+   if(type == "sr_close")
+      return SR_CloseCommand(msg);
    msg = "perintah tidak dikenal: " + type;
    return false;
   }
@@ -866,10 +883,12 @@ void ShowStatus()
    Comment(StringFormat("AlgoDesk Agent %s  |  akun %I64d\n" +
                         "Baseline %.2f  |  Batas %.2f%% (%.2f)\n" +
                         "Rugi tercatat %.2f  |  Entry: %s\n" +
-                        "Backend: %s",
+                        "Backend: %s\n" +
+                        "StopReverse %s: %s",
                         AGENT_VERSION, AccountInfoInteger(ACCOUNT_LOGIN),
                         Baseline(), LimitPct(), LossLimit(),
-                        LossUsed(), EntryStateText(), backend));
+                        LossUsed(), EntryStateText(), backend,
+                        g_sr.on ? "ON" : "OFF", g_sr.sym + " " + g_srStatus));
   }
 
 //+------------------------------------------------------------------+
@@ -896,7 +915,9 @@ int OnInit()
    EnsureBaseline();
    BuildSymbols();
    g_trade.SetAsyncMode(false);
-   EventSetTimer(1);
+   SR_Init(InpSrMagic, InpSrSlippage, InpSrLogCSV);
+   // 250 ms so the strategy trails promptly even when the chart is another symbol
+   EventSetMillisecondTimer(250);
    PrintFormat("AlgoDesk: agent aktif, baseline %.2f, batas %.2f%%", Baseline(), LimitPct());
    return INIT_SUCCEEDED;
   }
@@ -913,6 +934,7 @@ void OnTimer()
    EnsureBaseline();
    CheckLimit();
    AD_Set("HB", (double)TimeGMT());
+   SR_Run();
 
    if(SymbolsTotal(true) != ArraySize(g_syms) && ArraySize(g_syms) < InpMaxSymbols)
       BuildSymbols();
@@ -943,5 +965,7 @@ void OnTick()
   {
    // Equity can move between timer ticks; check the limit on every tick of the chart symbol too.
    CheckLimit();
+   if(_Symbol == g_sr.sym)
+      SR_Run();
   }
 //+------------------------------------------------------------------+

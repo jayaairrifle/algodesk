@@ -40,6 +40,8 @@ COMMAND_ROLES = {
     "disable_magic": ("admin", "trader"),
     "enable_magic": ("admin", "trader"),
     "set_limit": ("admin",),
+    "sr_set": ("admin", "trader"),
+    "sr_close": ("admin", "trader"),
 }
 STATIC = Path(__file__).parent / "static"
 
@@ -50,10 +52,20 @@ class LoginIn(BaseModel):
 
 
 class CommandIn(BaseModel):
-    type: Literal["pause_entry", "resume_entry", "disable_magic", "enable_magic", "set_limit"]
+    type: Literal["pause_entry", "resume_entry", "disable_magic", "enable_magic", "set_limit", "sr_set", "sr_close"]
     magic: int | None = None
     value: float | None = None
     agent_id: str | None = None
+    # sr_set (StopReverse strategy in the agent): only the fields given are changed
+    enabled: bool | None = None
+    symbol: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._#+-]{1,32}$")
+    lots: float | None = Field(default=None, gt=0, le=100)
+    dist: float | None = Field(default=None, gt=0, le=10000)
+    step: float | None = Field(default=None, ge=0, le=10000)
+
+    def params(self) -> dict | None:
+        p = {k: getattr(self, k) for k in ("enabled", "symbol", "lots", "dist", "step") if getattr(self, k) is not None}
+        return p or None
 
 
 class UserIn(BaseModel):
@@ -73,6 +85,13 @@ class UserPatch(BaseModel):
 class EaIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     scope: str = Field(default="", max_length=120)
+
+
+def command_out(row) -> dict:
+    """A command row with its settings (params) flattened in, as the agent reads them."""
+    out = dict(row)
+    params = out.pop("params", None)
+    return out | (json.loads(params) if params else {})
 
 
 def user_out(row) -> dict:
@@ -267,13 +286,13 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
             (agent_id, now - COMMAND_TTL),
         )
         rows = db.all(
-            "SELECT c.id, c.type, c.magic, c.value, u.display_name AS issued_by FROM commands c "
+            "SELECT c.id, c.type, c.magic, c.value, c.params, u.display_name AS issued_by FROM commands c "
             "LEFT JOIN users u ON u.id = c.issued_by WHERE c.agent_id = ? AND c.status = 'pending' ORDER BY c.issued_at",
             (agent_id,),
         )
         for r in rows:
             db.run("UPDATE commands SET delivered_at = COALESCE(delivered_at, ?) WHERE id = ?", (now, r["id"]))
-        return {"commands": [dict(r) for r in rows]}
+        return {"commands": [command_out(r) for r in rows]}
 
     @app.post(API + "/agent/commands/ack")
     def agent_ack(auth=Depends(agent_auth)):
@@ -449,19 +468,22 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
             raise HTTPException(422, "Magic number wajib diisi")
         if body.type == "set_limit" and (body.value is None or not 0.5 <= body.value <= 20):
             raise HTTPException(422, "Batas rugi harus antara 0,5% dan 20%")
+        if body.type == "sr_set" and body.params() is None:
+            raise HTTPException(422, "Tidak ada pengaturan yang diubah")
         chosen = pick_agent(body.agent_id)
         if chosen is None:
             raise HTTPException(404, "Belum ada agent terdaftar")
         cid = "cmd_" + secrets.token_hex(8)
+        params = body.params() if body.type == "sr_set" else None
         db.run(
-            "INSERT INTO commands (id, agent_id, type, magic, value, issued_by, issued_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (cid, chosen, body.type, body.magic, body.value, user["id"], time.time()),
+            "INSERT INTO commands (id, agent_id, type, magic, value, params, issued_by, issued_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (cid, chosen, body.type, body.magic, body.value, json.dumps(params) if params else None, user["id"], time.time()),
         )
         return {"id": cid, "status": "pending"}
 
     def command_rows(where: str, args: tuple, limit: int = 1):
         return db.all(
-            "SELECT c.id, c.agent_id, c.type, c.magic, c.value, c.issued_at, c.status, c.delivered_at, c.acked_at, "
+            "SELECT c.id, c.agent_id, c.type, c.magic, c.value, c.params, c.issued_at, c.status, c.delivered_at, c.acked_at, "
             "c.result, c.entry_state, u.display_name AS issued_by, u.role AS issued_role FROM commands c "
             f"LEFT JOIN users u ON u.id = c.issued_by WHERE {where} ORDER BY c.issued_at DESC LIMIT ?",
             args + (limit,),
@@ -470,7 +492,7 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
     @app.get(API + "/commands")
     def list_commands(limit: int = 50, user=Depends(current_user)):
         db.run("UPDATE commands SET status = 'expired' WHERE status = 'pending' AND issued_at < ?", (time.time() - COMMAND_TTL,))
-        return {"commands": [dict(r) for r in command_rows("1 = 1", (), max(1, min(limit, 500)))]}
+        return {"commands": [command_out(r) for r in command_rows("1 = 1", (), max(1, min(limit, 500)))]}
 
     @app.get(API + "/commands/{cid}")
     def get_command(cid: str, user=Depends(current_user)):
@@ -478,7 +500,7 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
         rows = command_rows("c.id = ?", (cid,))
         if not rows:
             raise HTTPException(404, "Perintah tidak ditemukan")
-        return dict(rows[0])
+        return command_out(rows[0])
 
     # ------------------------------------------------------------------ EA registry
     @app.put(API + "/eas/{magic}")
