@@ -108,14 +108,19 @@ button { font: inherit; color: inherit; }
 .nav .ct { margin-left: auto; min-width: 22px; height: 22px; border-radius: 11px; background: var(--panel-3); color: var(--fg); font-size: 12px; display: grid; place-items: center; padding: 0 6px; }
 .nav.on .ct { background: rgba(255,255,255,.2); }
 .navgroup { display: flex; flex-direction: column; gap: 3px; }
-.symbox { margin-top: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.symbox { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); padding: 12px; display: flex; flex-direction: column; gap: 12px; }
 .symbox h3 { margin: 0; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
 .symrow { display: grid; grid-template-columns: 30px 1fr 64px; gap: 10px; align-items: center; }
 .coin { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #1a1205; background: var(--gold); }
 .symrow b { display: block; font-size: 13px; }
 .symrow .num { font-size: 14px; display: block; }
 .symrow svg { width: 64px; height: 30px; }
-.ver { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin: 10px 4px 0; }
+.ver { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin: auto 4px 0; padding-top: 10px; }
+.sympick { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; border-top: 1px solid var(--line-soft); padding-top: 8px; }
+.sympick label { flex-direction: row; align-items: center; gap: 8px; padding: 4px 2px; font-size: 13px; color: var(--fg); cursor: pointer; }
+.sympick label input { accent-color: var(--accent); }
+.sympick .muted { font-size: 12px; }
+.sympick .lnk { background: none; border: 0; color: var(--accent); cursor: pointer; font-size: 12px; padding: 4px 2px; text-align: left; }
 
 main { padding: 18px 20px 24px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .phead { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
@@ -503,7 +508,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       <button class="nav" data-view="users" id="navUsers"><svg><use href="#i-users"/></svg>Pengguna &amp; RBAC</button>
       <button class="nav" data-view="settings"><svg><use href="#i-gear"/></svg>Settings</button>
     </div>
-    <div class="symbox"><h3>Symbols <button class="btn icon sm outline" data-go="market" aria-label="Buka Market Watch"><svg><use href="#i-plus"/></svg></button></h3><div id="symList" style="display:flex;flex-direction:column;gap:12px"></div></div>
+    <div class="symbox"><h3>Symbols <button class="btn icon sm outline" id="symPickBtn" aria-expanded="false" aria-label="Tambah atau kurangi simbol"><svg><use href="#i-plus"/></svg></button></h3><div id="symList" style="display:flex;flex-direction:column;gap:12px"></div><div id="symPick" class="sympick" hidden></div></div>
     <div class="ver"><span>AlgoDesk</span><span class="mono" id="verTag">–</span></div>
   </aside>
   <main id="main"></main>
@@ -723,12 +728,22 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     $('navPos').textContent = t?.positions?.length ?? 0;
     $('navBkt').textContent = t ? baskets().length : 0;
     $('verTag').textContent = 'agent ' + (t?.agent_version || '–');
-    $('symList').innerHTML = (t?.symbols || []).slice().sort((x, y) => (syms.includes(y.symbol) - syms.includes(x.symbol))).slice(0, 3).map(s => {
+    // the viewer's own pick (kept in this browser), else the first three, symbols with open positions first
+    const picked = sideSyms(), all = t?.symbols || [];
+    const shown = picked ? picked.map(x => all.find(s => s.symbol === x)).filter(Boolean)
+      : all.slice().sort((x, y) => (syms.includes(y.symbol) - syms.includes(x.symbol))).slice(0, 3);
+    const pk = $('symPick'), pb = $('symPickBtn');
+    pk.hidden = !S.symPick; pb.setAttribute('aria-expanded', String(!!S.symPick));
+    pb.innerHTML = icon(S.symPick ? 'i-x' : 'i-plus');
+    if (S.symPick) pk.innerHTML = `<span class="muted">Centang simbol yang ditampilkan</span>${all.map(s => `<label><input type="checkbox" data-symtog="${esc(s.symbol)}" ${shown.some(x => x.symbol === s.symbol) ? 'checked' : ''}>${esc(s.symbol)}</label>`).join('') || '<span class="muted">Menunggu simbol dari agent…</span>'}
+      ${picked ? '<button class="lnk" data-symreset>Kembalikan ke otomatis</button>' : ''}<span class="muted">Daftar berasal dari Market Watch MT5. Simbol lain ditambahkan dulu di Market Watch terminal.</span>`;
+    $('symList').innerHTML = shown.map(s => {
       const ch = s.day_open ? (s.bid - s.day_open) / s.day_open * 100 : null, h = S.hist[s.symbol] || [];
       return `<div class="symrow">${coinHtml(s.symbol)}<div><b>${esc(s.symbol)}</b><span class="num">${fmtPx(s.bid, s.digits)}</span><span class="num ${cls(ch)}" style="font-size:12.5px">${ch == null ? '' : pct(ch)}</span></div>${spark(h, ch < 0 ? 'var(--down)' : 'var(--up)', 64, 30, false)}</div>`;
     }).join('') || '<span class="muted">–</span>';
     document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.view === S.view));
   }
+  function sideSyms() { try { const v = JSON.parse(pref.get('sideSyms')); return Array.isArray(v) ? v : null; } catch { return null; } }
   function tickClock() {
     const d = new Date(), off = -d.getTimezoneOffset() / 60;
     $('tbDate').textContent = d.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
@@ -1544,6 +1559,8 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       render(); return;
     }
     if (e.target.closest('#themeBtn')) { const t = theme() === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; pref.set('theme', t); showTheme(); return; }
+    if (e.target.closest('#symPickBtn')) { S.symPick = !S.symPick; renderChrome(); return; }
+    if (e.target.closest('[data-symreset]')) { try { localStorage.removeItem('algodesk.sideSyms'); } catch {} renderChrome(); return; }
     const ub = e.target.closest('#userBtn'), menu = $('userMenu');
     if (ub) { menu.hidden = !menu.hidden; ub.setAttribute('aria-expanded', String(!menu.hidden)); return; }
     if (!e.target.closest('.user')) menu.hidden = true;
@@ -1607,6 +1624,11 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.detail != null) { S.detail = null; render(); } });
   document.addEventListener('change', async e => {
     const el = e.target, id = el.id;
+    if (el.dataset.symtog) {
+      const cur = sideSyms() || [...document.querySelectorAll('[data-symtog]:checked')].map(x => x.dataset.symtog).filter(x => x !== el.dataset.symtog);
+      const next = el.checked ? [...cur.filter(x => x !== el.dataset.symtog), el.dataset.symtog] : cur.filter(x => x !== el.dataset.symtog);
+      pref.set('sideSyms', JSON.stringify(next)); renderChrome(); return;
+    }
     if (id === 'curSel') { S.cur = el.value; pref.set('cur', S.cur); }
     else if (id === 'fSym') S.sym = el.value;
     else if (id === 'fBkt') S.basketSym = el.value;
