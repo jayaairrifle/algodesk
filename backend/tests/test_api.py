@@ -231,3 +231,22 @@ def test_fx_endpoint_needs_login_and_returns_the_cached_rate(app):
     assert TestClient(app).get("/api/fx").status_code == 401
     out = login(app, "viewer").get("/api/fx").json()
     assert out["usd_idr"] == 16000 and out["source"] == "test"
+
+
+def test_balance_history_is_rebuilt_from_deals(app):
+    day = 1_800_000_000 // 86400 * 86400
+    tel = TELEMETRY | {"server_time": day + 3600, "protection": TELEMETRY["protection"] | {"day_start": day}}
+    agent = TestClient(app)
+    agent_call(agent, "POST", "/agent/telemetry", tel)
+    deals = [
+        deal(1, 10, day - 86400 * 2, "BUY", "IN"),
+        deal(2, 10, day - 86400 * 2 + 60, "SELL", "OUT", net=46.38),
+        {"ticket": 3, "position": 0, "time": day + 30, "type": "BALANCE", "entry": "IN", "profit": 200.0},
+        deal(4, 11, day + 120, "SELL", "OUT", net=-0.5),
+    ]
+    agent_call(agent, "POST", "/agent/deals", {"login": 884921, "deals": deals})
+    out = login(app, "viewer").get("/api/balance?days=7").json()
+    assert out["start"] == day - 6 * 86400
+    # 10246.38 now = 10000.50 at the start + 46.38 + 200 deposit - 0.50
+    assert out["points"] == [[day - 6 * 86400, 10000.5], [day - 86400 * 2 + 60, 10046.88],
+                             [day + 30, 10246.88], [day + 120, 10246.38]]
