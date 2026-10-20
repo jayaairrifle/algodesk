@@ -262,3 +262,29 @@ def test_balance_history_is_rebuilt_from_deals(app):
     # 10246.38 now = 10000.50 at the start + 46.38 + 200 deposit - 0.50
     assert out["points"] == [[day - 6 * 86400, 10000.5], [day - 86400 * 2 + 60, 10046.88],
                              [day + 30, 10246.88], [day + 120, 10246.38]]
+
+
+def test_strategy_settings_reach_the_agent_as_flat_fields(app):
+    trader = login(app, "trader")
+    agent = TestClient(app)
+    agent_call(agent, "POST", "/agent/telemetry", TELEMETRY)  # registers the agent's latest state
+    cid = trader.post("/api/commands", json={"type": "sr_set", "enabled": True, "symbol": "XAUUSDc", "lots": 0.02,
+                                             "dist": 0.6, "step": 0.05}).json()["id"]
+    cmd = agent_call(agent, "GET", "/agent/commands").json()["commands"][0]
+    assert cmd["id"] == cid and cmd["type"] == "sr_set"
+    assert (cmd["enabled"], cmd["symbol"], cmd["lots"], cmd["dist"], cmd["step"]) == (True, "XAUUSDc", 0.02, 0.6, 0.05)
+    # only the fields that were sent are delivered, so the agent leaves the rest as they are
+    trader.post("/api/commands", json={"type": "sr_set", "enabled": False})
+    later = agent_call(agent, "GET", "/agent/commands").json()["commands"][-1]
+    assert later["enabled"] is False and "lots" not in later
+    assert trader.get(f"/api/commands/{cid}").json()["symbol"] == "XAUUSDc"
+
+
+def test_strategy_commands_are_checked(app):
+    trader, viewer = login(app, "trader"), login(app, "viewer")
+    assert viewer.post("/api/commands", json={"type": "sr_set", "enabled": True}).status_code == 403
+    assert viewer.post("/api/commands", json={"type": "sr_close"}).status_code == 403
+    assert trader.post("/api/commands", json={"type": "sr_set"}).status_code == 422
+    assert trader.post("/api/commands", json={"type": "sr_set", "lots": 0}).status_code == 422
+    assert trader.post("/api/commands", json={"type": "sr_set", "symbol": "XAU\"USD"}).status_code == 422
+    assert trader.post("/api/commands", json={"type": "sr_close"}).status_code == 200

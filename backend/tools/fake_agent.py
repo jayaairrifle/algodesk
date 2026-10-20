@@ -35,6 +35,7 @@ class Sim:
         self.symbols = [dict(zip(("symbol", "bid", "digits", "point", "spread", "rsi", "atr", "structure"), s)) for s in SYMBOLS]
         for s in self.symbols:
             s["open"] = s["bid"] * (1 + random.gauss(0, 0.003))
+        self.sr = {"enabled": False, "symbol": "XAUUSD", "lots": 0.01, "dist": 0.6, "step": 0.05}
         self.balance = 10246.38
         self.baseline = 10246.38
         self.day_balance = self.balance
@@ -155,6 +156,7 @@ class Sim:
                          "tf": self.timeframes(s, signal)}
                         for s in self.symbols],
             "timeframe": "H1",
+            "strategies": [self.strategy()],
         }
 
     def pending_deals(self):
@@ -182,7 +184,25 @@ class Sim:
                 return False, "batas harus 0.5 sampai 20 persen"
             self.limit_pct = v
             return True, f"batas rugi diubah ke {v:.2f}%"
+        if t == "sr_set":
+            if cmd.get("symbol") and not any(x["symbol"] == cmd["symbol"] for x in self.symbols):
+                return False, f"simbol {cmd['symbol']} tidak ada di broker ini"
+            self.sr |= {k: cmd[k] for k in ("enabled", "symbol", "lots", "dist", "step") if k in cmd}
+            sr = self.sr
+            return True, f"StopReverse {'ON' if sr['enabled'] else 'OFF'}, {sr['symbol']} lot {sr['lots']:.2f} D {sr['dist']:.2f} S {sr['step']:.2f}"
+        if t == "sr_close":
+            self.sr["enabled"] = False
+            return True, "StopReverse dimatikan, posisi dan stop order ditutup"
         return False, f"perintah tidak dikenal: {t}"
+
+    def strategy(self):
+        """The StopReverse block of agent 0.15 telemetry."""
+        sr, on = self.sr, self.sr["enabled"]
+        block = "" if not on else ("entry dijeda dari dashboard" if self.paused else "batas rugi harian tercapai" if self.blocked else "")
+        bid = self.sym(sr["symbol"])["bid"]
+        status = "OFF" if not on else f"BUY {sr['lots']:.2f} @ {bid - 0.4:.2f} (+0.40) | SELL STOP {bid - sr['dist']:.2f} = " + ("BALIK ARAH" if not block else f"KELUAR saja ({block})")
+        return {"id": "stop_reverse", "name": "XAU StopReverse", "magic": 777001, "hedging": True,
+                "positions": 1 if on else 0, "orders": 1 if on else 0, "blocked": block, "status": status} | sr
 
 
 def request(base, path, method, agent_id, secret, payload=None):

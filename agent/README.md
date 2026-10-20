@@ -1,4 +1,4 @@
-# AlgoDesk MT5 Agent v0.10
+# AlgoDesk MT5 Agent v0.15
 
 Agent sisi terminal untuk dashboard AlgoDesk. Isinya dua file:
 
@@ -6,6 +6,7 @@ Agent sisi terminal untuk dashboard AlgoDesk. Isinya dua file:
 |---|---|---|
 | `MQL5/Experts/AlgoDesk/AlgoDeskAgent.mq5` | `MQL5/Experts/AlgoDesk/` | Proteksi rugi harian, penegakan, telemetri, kanal perintah |
 | `MQL5/Include/AlgoDesk/AlgoDeskGuard.mqh` | `MQL5/Include/AlgoDesk/` | Cek izin entry untuk setiap EA (VE5, EA Trend, dll.) |
+| `MQL5/Include/AlgoDesk/StopReverse.mqh` | `MQL5/Include/AlgoDesk/` | Strategi XAU StopReverse yang berjalan di dalam agent (0.15) |
 
 Status: kode belum dikompilasi di MetaEditor. Kompilasi dulu dan laporkan error jika ada.
 
@@ -95,6 +96,17 @@ Dikirim tiap `InpTelemetrySec` detik.
 
 Sejak 0.14 setiap simbol membawa `tf`: RSI, ATR, struktur dan sinyal untuk M1, M5, M15, M30, H1, H4, D1, W1 dan MN1, dipakai pilihan timeframe di Market Watch dashboard. Kolom `rsi`/`atr_points`/`structure`/`signal` di level simbol tetap untuk `InpSignalTf` (`timeframe`). Input `InpAllTimeframes = false` mematikan timeframe lain untuk menghemat memori terminal.
 
+### Strategi StopReverse (0.15)
+
+Agent menjalankan strategi XAU StopReverse sendiri (magic `InpSrMagic`, default 777001), jadi EA XAU_StopReverse terpisah tidak perlu dipasang lagi. Hidup/mati dan pengaturan (simbol, lot, jarak D, langkah trailing S) diatur dari halaman EA Expert di dashboard lewat perintah `sr_set`/`sr_close`, disimpan per akun di `MQL5\Files\AlgoDesk\sr_<login>.txt`. Default mati.
+
+Saat OFF tidak ada entry atau reverse baru; posisi yang sedang jalan keluar di level trailing-nya. Strategi ikut batas rugi harian, jeda entry, dan disable magic. Telemetri membawa statusnya:
+
+```json
+"strategies": [ { "id": "stop_reverse", "name": "XAU StopReverse", "magic": 777001, "enabled": true, "symbol": "XAUUSD",
+  "lots": 0.01, "dist": 0.60, "step": 0.05, "hedging": true, "positions": 1, "orders": 1, "status": "...", "blocked": "" } ]
+```
+
 ### `POST /agent/deals`
 
 Dikirim setiap 15 detik (agent 0.13). Isinya riwayat deal sejak kursor per akun (Global Variable `AD_<login>_DSYNC`). Kiriman pertama mencakup 31 hari terakhir, dengan maksimal 300 deal per request. Deal yang terkirim ulang hanya menimpa data yang sama.
@@ -121,6 +133,8 @@ Dicek tiap `InpCommandPollSec` detik. Backend hanya mengembalikan perintah yang 
 | `resume_entry` | | Cabut jeda (blokir batas rugi tetap berlaku) |
 | `disable_magic` / `enable_magic` | `magic` | Matikan/hidupkan entry satu magic number |
 | `set_limit` | `value` (0.5–20) | Ubah batas rugi %; menaikkan batas tidak mencabut blokir hari ini |
+| `sr_set` | salah satu dari `enabled`, `symbol`, `lots`, `dist`, `step` | Ubah StopReverse; field yang tidak dikirim tetap. Ganti simbol ditolak selama ada posisi/order |
+| `sr_close` | | Tutup semua posisi dan order StopReverse lalu matikan strategi |
 
 Backend wajib memeriksa role (RBAC) sebelum menyimpan perintah. Agent tidak mengenal pengguna.
 

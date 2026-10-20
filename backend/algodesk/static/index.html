@@ -245,6 +245,14 @@ td.c, th.c { text-align: center; }
 .eac .h b { font-size: 15.5px; display: block; }
 .eac .h small { color: var(--fg-2); font-size: 12.5px; }
 .eac .st { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.srcard .ph h2 .chip { margin-left: 6px; vertical-align: middle; }
+.srbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; padding: 4px 16px 16px; }
+.srstate { display: flex; flex-direction: column; gap: 6px; }
+.srstate small { color: var(--fg-2); }
+.srstate b { font-family: var(--mono); font-size: 13.5px; }
+.srform { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end; }
+.srbtns { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+@media (max-width: 900px) { .srbody { grid-template-columns: minmax(0, 1fr); } }
 .sw { position: relative; width: 74px; height: 30px; border-radius: 15px; border: 0; cursor: pointer; background: var(--panel-3); color: var(--fg-2); font-size: 12px; font-weight: 600; text-align: right; padding: 0 12px; }
 .sw::after { content: ""; position: absolute; top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .2s; }
 .sw.on { background: var(--up); color: #fff; text-align: left; }
@@ -821,6 +829,37 @@ td.c, th.c { text-align: center; }
   }
 
   // ---------- EA Expert page ----------
+  // ---------- strategies running inside the agent (agent 0.15+) ----------
+  function strategyCards() {
+    const t = tel(); if (!t) return '';
+    const list = t.strategies;
+    if (!list) return `<section class="card"><div class="ph"><h2>Strategi di Agent</h2></div><div class="empty">Perbarui AlgoDeskAgent ke versi 0.15 untuk menjalankan strategi XAU StopReverse dari dashboard.</div></section>`;
+    const ctl = can('control') && S.st?.agent?.online && !S.pending;
+    return list.map(st => {
+      const blocked = st.enabled && st.blocked, mode = st.hedging ? 'Hedging' : 'Netting';
+      const action = S.srConfirm ? `<div class="confirm"><span>Tutup <b>semua posisi dan stop order StopReverse</b> di ${esc(st.symbol)} sekarang dan matikan strategi?</span>
+          <div><button class="btn" type="button" data-sr="cancel">Batal</button><button class="btn red" type="button" data-sr="closego">Tutup sekarang</button></div></div>`
+        : `<button class="btn red" type="button" data-sr="close" ${ctl && (st.positions || st.orders) ? '' : 'disabled'}>${icon('i-x')}Tutup posisi &amp; matikan</button>`;
+      return `<section class="card srcard"><div class="ph"><div><h2>${esc(st.name)} <span class="chip ${st.enabled ? 'g' : ''}">${st.enabled ? 'ON' : 'OFF'}</span></h2>
+          <span class="muted">Strategi di dalam agent · Magic ${st.magic} · ${esc(st.symbol)} · ${mode}</span></div>
+          <button class="sw ${st.enabled ? 'on' : ''}" data-sr="toggle" aria-label="${st.enabled ? 'Matikan' : 'Nyalakan'} StopReverse" ${ctl ? '' : 'disabled'}>${st.enabled ? 'ON' : 'OFF'}</button></div>
+        <div class="srbody">
+          <div class="srstate"><small>Status agent</small><b>${esc(st.status || '–')}</b>
+            ${blocked ? `<span class="warn">Entry dan balik arah ditahan: ${esc(st.blocked)}</span>` : ''}
+            <span class="muted">Posisi terbuka ${st.positions} · stop order ${st.orders}</span>
+            <span class="muted">OFF = tidak membuka posisi baru dan tidak balik arah; posisi yang sedang berjalan keluar di level trailing-nya.</span></div>
+          <form id="srForm" class="srform">
+            <label>Simbol<input id="srSym" value="${esc(st.symbol)}" list="srSyms" maxlength="32" required></label>
+            <datalist id="srSyms">${(t.symbols || []).map(x => `<option value="${esc(x.symbol)}">`).join('')}</datalist>
+            <label>Lot<input id="srLots" type="number" min="0.01" max="100" step="0.01" value="${st.lots}" required></label>
+            <label>Jarak stop D ($)<input id="srDist" type="number" min="0.01" step="0.01" value="${+st.dist.toFixed(5)}" required></label>
+            <label>Geser minimal S ($)<input id="srStep" type="number" min="0" step="0.01" value="${+st.step.toFixed(5)}" required></label>
+            <div class="srbtns"><button class="btn primary" type="submit" ${ctl ? '' : 'disabled'}>Simpan pengaturan</button>${action}</div>
+          </form></div>
+        ${can('control') ? '' : '<div class="pf">Peran Viewer hanya bisa melihat.</div>'}</section>`;
+    }).join('');
+  }
+
   function eaCards() {
     const ms = eaMagics(), ctl = can('control'), online = S.st?.agent?.online, p = tel()?.protection || {}, base = p.baseline;
     return `<div class="eacards">${ms.map(m => {
@@ -1091,7 +1130,7 @@ td.c, th.c { text-align: center; }
         + `<div class="grid g-ov2">${historyTable(S.trades, { limit: 8 })}${riskCard()}</div>`;
       case 'positions': return positionsTable(false) + exposureCard();
       case 'history': return historyTable(S.histTrades, { days: true });
-      case 'eas': return eaCards() + `<div class="grid g-ea2">${perfSummary()}${allocCard()}</div><div class="grid g-ea2">${logsCard()}${resourceCard()}</div>`;
+      case 'eas': return strategyCards() + eaCards() + `<div class="grid g-ea2">${perfSummary()}${allocCard()}</div><div class="grid g-ea2">${logsCard()}${resourceCard()}</div>`;
       case 'basket': return basketCard(true);
       case 'risk': return riskCard() + `<div class="grid g-2">${protControl()}${exposureCard()}</div>`;
       case 'analytics': return filterBar() + kpiRow() + `<div class="grid g-2">${equityCard()}${dailyCard()}</div>` + perfSummary() + `<div class="grid g-2">${symPerfCard()}${allocCard()}</div>`;
@@ -1216,6 +1255,15 @@ td.c, th.c { text-align: center; }
       if (d.dataset.perf) { S.perfTab = d.dataset.perf; try { const r = await api('/eas/stats?period=' + S.perfTab); S.statsPer = r.eas; S.perStart = r.start; } catch (err) { toast(err.message, 'err'); } }
       render(); return;
     }
+    const sr = e.target.closest('[data-sr]');
+    if (sr && !sr.disabled) {
+      const st = tel()?.strategies?.[0], a = sr.dataset.sr;
+      if (a === 'toggle' && st) sendCommand({ type: 'sr_set', enabled: !st.enabled }, st.enabled ? 'Matikan StopReverse' : 'Nyalakan StopReverse');
+      else if (a === 'close') { S.srConfirm = true; render(); }
+      else if (a === 'cancel') { S.srConfirm = false; render(); }
+      else if (a === 'closego') { S.srConfirm = false; sendCommand({ type: 'sr_close' }, 'Tutup posisi StopReverse'); }
+      return;
+    }
     const mg = e.target.closest('[data-magic]');
     if (mg && !mg.disabled) { const m = +mg.dataset.magic, off = eaOff(m); sendCommand({ type: off ? 'enable_magic' : 'disable_magic', magic: m }, `${off ? 'Start' : 'Stop'} ${eaLabel(m)}`); return; }
     const ed = e.target.closest('[data-edit]');
@@ -1268,6 +1316,10 @@ td.c, th.c { text-align: center; }
     e.preventDefault();
     try {
       if (f.id === 'fxForm') { const v = parseFloat($('fxIn').value); if (!(v >= 1000)) throw new Error('Kurs tidak valid'); pref.set('usdIdr', String(v)); toast('Kurs disimpan'); }
+      else if (f.id === 'srForm') {
+        const body = { type: 'sr_set', symbol: $('srSym').value.trim(), lots: parseFloat($('srLots').value), dist: parseFloat($('srDist').value), step: parseFloat($('srStep').value) };
+        document.activeElement?.blur(); await sendCommand(body, 'Simpan pengaturan StopReverse');
+      }
       else if (f.id === 'limitForm') { const v = parseFloat($('limIn').value); $('limIn').blur(); await sendCommand({ type: 'set_limit', value: v }, `Ubah batas rugi ke ${v}%`); await loadCmds(); }
       else if (f.id === 'eaAdd') { await api('/eas/' + $('eaAddMagic').value, { method: 'PUT', body: { name: $('eaAddName').value, scope: '' } }); toast('EA didaftarkan.'); }
       else if (f.dataset.eaform) { const m = f.dataset.eaform; await api('/eas/' + m, { method: 'PUT', body: { name: $('ean-' + m).value, scope: $('eas-' + m).value } }); S.edit = null; toast('EA disimpan.'); }
