@@ -586,6 +586,8 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   };
   const PL_CURS = ['USC', 'USD', 'IDR'];
   const plCells = (v, bold) => PL_CURS.map(c => `<td class="r num ${cls(v)}">${bold ? '<b>' : ''}${fmtIn(v, c, true)}${bold ? '</b>' : ''}</td>`).join('');
+  // floating P/L as a percentage of the account balance
+  const balPct = v => { const b = tel()?.account?.balance; return b ? v / b * 100 : null; };
   const fmtMoney = (v, sign) => {
     if (v == null || Number.isNaN(v)) return '–';
     const cur = viewCur(), n = fmtNum(v, sign), s = /^[−+]/.test(n) ? n[0] : '', body = s ? n.slice(1) : n;
@@ -846,8 +848,9 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       <tbody>${rows || `<tr><td colspan="15" class="empty">Tidak ada posisi terbuka.</td></tr>`}</tbody>
       ${ps.length ? (() => { const pl = sum(ps, p => p.profit);
         return `<tfoot><tr><td></td><td colspan="2"><b>Total</b></td><td class="r num"><b>${sum(ps, p => p.volume).toFixed(2)}</b></td><td></td><td></td>
-        ${compact ? `<td class="r num ${cls(pl)}"><b>${fmtNum(pl, true)}</b></td>` : `<td></td><td></td>${plCells(pl, true)}`}<td colspan="4"></td></tr></tfoot>`; })() : ''}</table></div>
-      ${compact ? '' : `<div class="pf">${idrRate() ? `Kurs 1 USD = ${idrRate().toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDR (${idrSource()}); 1 USD = 100 USC. ` : 'IDR muncul setelah kurs USD/IDR tersedia. '}Posisi ditutup oleh EA masing-masing atau di MT5. Dashboard hanya bisa menghentikan entry baru per EA.</div>`}</section>`;
+        ${compact ? `<td class="r num ${cls(pl)}"><b>${fmtNum(pl, true)}</b></td>` : `<td></td><td></td>${plCells(pl, true)}`}
+        <td class="r num ${cls(pl)}" title="Total P/L terhadap balance akun"><b>${pct(balPct(pl))}</b></td><td colspan="3" class="muted">dari balance</td></tr></tfoot>`; })() : ''}</table></div>
+      ${compact ? '' : `<div class="pf">${idrRate() ? `Total P/L (%) = total P/L dibagi balance akun. Kurs 1 USD = ${idrRate().toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDR (${idrSource()}); 1 USD = 100 USC. ` : 'IDR muncul setelah kurs USD/IDR tersedia. '}Posisi ditutup oleh EA masing-masing atau di MT5. Dashboard hanya bisa menghentikan entry baru per EA.</div>`}</section>`;
   }
   function basketCard(full) {
     const bs = baskets().filter(b => S.basketSym === 'ALL' || b.symbol === S.basketSym), syms = [...new Set(baskets().map(b => b.symbol))];
@@ -1107,10 +1110,10 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   function exposureCard() {
     const ps = tel()?.positions || [], by = {};
     ps.forEach(p => { const b = by[p.symbol] ||= { buy: 0, sell: 0, pl: 0, n: 0 }; b[p.side === 'BUY' ? 'buy' : 'sell'] += p.volume; b.pl += p.profit; b.n++; });
-    return `<section class="card"><div class="ph"><h2>Exposure per Symbol</h2></div><div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Posisi</th><th class="r">Buy lot</th><th class="r">Sell lot</th><th class="r">Net lot</th>${PL_CURS.map(c => `<th class="r">Floating (${c})</th>`).join('')}</tr></thead><tbody>
-      ${Object.entries(by).map(([s, b]) => `<tr><td><b>${esc(s)}</b></td><td class="r num">${b.n}</td><td class="r num up">${b.buy.toFixed(2)}</td><td class="r num down">${b.sell.toFixed(2)}</td><td class="r num">${(b.buy - b.sell).toFixed(2)}</td>${plCells(b.pl)}</tr>`).join('') || '<tr><td colspan="8" class="empty">Tidak ada posisi terbuka.</td></tr>'}
+    return `<section class="card"><div class="ph"><h2>Exposure per Symbol</h2></div><div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Posisi</th><th class="r">Buy lot</th><th class="r">Sell lot</th><th class="r">Net lot</th>${PL_CURS.map(c => `<th class="r">Floating (${c})</th>`).join('')}<th class="r">% Balance</th></tr></thead><tbody>
+      ${Object.entries(by).map(([s, b]) => `<tr><td><b>${esc(s)}</b></td><td class="r num">${b.n}</td><td class="r num up">${b.buy.toFixed(2)}</td><td class="r num down">${b.sell.toFixed(2)}</td><td class="r num">${(b.buy - b.sell).toFixed(2)}</td>${plCells(b.pl)}<td class="r num ${cls(b.pl)}">${pct(balPct(b.pl))}</td></tr>`).join('') || '<tr><td colspan="9" class="empty">Tidak ada posisi terbuka.</td></tr>'}
       </tbody>${ps.length ? (() => { const v = Object.values(by), buy = sum(v, b => b.buy), sell = sum(v, b => b.sell);
-        return `<tfoot><tr><td><b>Total</b></td><td class="r num"><b>${ps.length}</b></td><td class="r num up"><b>${buy.toFixed(2)}</b></td><td class="r num down"><b>${sell.toFixed(2)}</b></td><td class="r num"><b>${(buy - sell).toFixed(2)}</b></td>${plCells(sum(v, b => b.pl), true)}</tr></tfoot>`; })() : ''}</table></div></section>`;
+        return `<tfoot><tr><td><b>Total</b></td><td class="r num"><b>${ps.length}</b></td><td class="r num up"><b>${buy.toFixed(2)}</b></td><td class="r num down"><b>${sell.toFixed(2)}</b></td><td class="r num"><b>${(buy - sell).toFixed(2)}</b></td>${plCells(sum(v, b => b.pl), true)}<td class="r num ${cls(sum(v, b => b.pl))}"><b>${pct(balPct(sum(v, b => b.pl)))}</b></td></tr></tfoot>`; })() : ''}</table></div></section>`;
   }
   function diagCard() {
     const t = tel(), a = S.st?.agent, term = t?.terminal || {}, age = ago(), secure = location.protocol === 'https:';
