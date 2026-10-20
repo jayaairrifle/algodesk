@@ -42,7 +42,13 @@ COMMAND_ROLES = {
     "set_limit": ("admin",),
     "sr_set": ("admin", "trader"),
     "sr_close": ("admin", "trader"),
+    "risk_set": ("admin",),
+    "risk_reset": ("admin",),
+    "session_set": ("admin",),
 }
+SESSIONS = r"(asia|london|newyork|overlap)"
+HHMM_RANGE = r"^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$"
+PARAM_FIELDS = ("enabled", "symbol", "lots", "dist", "step", "mode", "allow", "asia_hours", "london_hours", "newyork_hours")
 STATIC = Path(__file__).parent / "static"
 
 
@@ -52,7 +58,8 @@ class LoginIn(BaseModel):
 
 
 class CommandIn(BaseModel):
-    type: Literal["pause_entry", "resume_entry", "disable_magic", "enable_magic", "set_limit", "sr_set", "sr_close"]
+    type: Literal["pause_entry", "resume_entry", "disable_magic", "enable_magic", "set_limit", "sr_set", "sr_close",
+                  "risk_set", "risk_reset", "session_set"]
     magic: int | None = None
     value: float | None = None
     agent_id: str | None = None
@@ -62,9 +69,17 @@ class CommandIn(BaseModel):
     lots: float | None = Field(default=None, gt=0, le=100)
     dist: float | None = Field(default=None, gt=0, le=10000)
     step: float | None = Field(default=None, ge=0, le=10000)
+    # risk_set (daily loss protection): on/off, and the limit as a percentage of the day's baseline or a fixed amount
+    mode: Literal["pct", "amount"] | None = None
+    # session_set (trading-session filter): allowed sessions, and each session's hours in its own city's local time.
+    # The hours keys must not equal a session name: the agent's JSON reader finds a key by its quoted name.
+    allow: str | None = Field(default=None, pattern=rf"^{SESSIONS}(,{SESSIONS}){{0,3}}$")
+    asia_hours: str | None = Field(default=None, pattern=HHMM_RANGE)
+    london_hours: str | None = Field(default=None, pattern=HHMM_RANGE)
+    newyork_hours: str | None = Field(default=None, pattern=HHMM_RANGE)
 
     def params(self) -> dict | None:
-        p = {k: getattr(self, k) for k in ("enabled", "symbol", "lots", "dist", "step") if getattr(self, k) is not None}
+        p = {k: getattr(self, k) for k in PARAM_FIELDS if getattr(self, k) is not None}
         return p or None
 
 
@@ -468,13 +483,22 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
             raise HTTPException(422, "Magic number wajib diisi")
         if body.type == "set_limit" and (body.value is None or not 0.5 <= body.value <= 20):
             raise HTTPException(422, "Batas rugi harus antara 0,5% dan 20%")
-        if body.type == "sr_set" and body.params() is None:
+        if body.type in ("sr_set", "session_set") and body.params() is None:
             raise HTTPException(422, "Tidak ada pengaturan yang diubah")
+        if body.type == "risk_set":
+            if body.enabled is None and body.mode is None:
+                raise HTTPException(422, "Tidak ada pengaturan yang diubah")
+            if body.mode is not None and body.value is None:
+                raise HTTPException(422, "Nilai batas wajib diisi")
+            if body.mode == "pct" and not 0.5 <= body.value <= 20:
+                raise HTTPException(422, "Batas rugi harus antara 0,5% dan 20%")
+            if body.mode == "amount" and not 0 < body.value <= 1e12:
+                raise HTTPException(422, "Nominal batas rugi harus lebih dari 0")
         chosen = pick_agent(body.agent_id)
         if chosen is None:
             raise HTTPException(404, "Belum ada agent terdaftar")
         cid = "cmd_" + secrets.token_hex(8)
-        params = body.params() if body.type == "sr_set" else None
+        params = body.params()
         db.run(
             "INSERT INTO commands (id, agent_id, type, magic, value, params, issued_by, issued_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (cid, chosen, body.type, body.magic, body.value, json.dumps(params) if params else None, user["id"], time.time()),

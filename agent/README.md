@@ -1,4 +1,4 @@
-# AlgoDesk MT5 Agent v0.15
+# AlgoDesk MT5 Agent v0.16
 
 Agent sisi terminal untuk dashboard AlgoDesk. Isinya dua file:
 
@@ -96,6 +96,18 @@ Dikirim tiap `InpTelemetrySec` detik.
 
 Sejak 0.14 setiap simbol membawa `tf`: RSI, ATR, struktur dan sinyal untuk M1, M5, M15, M30, H1, H4, D1, W1 dan MN1, dipakai pilihan timeframe di Market Watch dashboard. Kolom `rsi`/`atr_points`/`structure`/`signal` di level simbol tetap untuk `InpSignalTf` (`timeframe`). Input `InpAllTimeframes = false` mematikan timeframe lain untuk menghemat memori terminal.
 
+### Batas rugi dan filter sesi dari dashboard (0.16)
+
+Sejak 0.16 batas rugi harian diatur dari Risk Center dan disimpan di Global Variable terminal (`CFG_ON`, `CFG_MODE`, `CFG_PCT`, `CFG_AMT`), jadi tetap berlaku setelah restart dan saat backend terputus. `InpLossLimitPct` hanya nilai awal saat pertama kali dipasang. Batas nominal diubah menjadi persen dari baseline setiap hari baru, sehingga EA dengan `AlgoDeskGuard.mqh` lama tetap membacanya.
+
+Filter sesi (menu Trading Session) menahan entry baru di luar sesi yang diizinkan. Jam sesi disimpan dalam jam lokal kotanya: Asia = Tokyo (UTC+9), London (GMT/BST), New York (EST/EDT), dengan pergantian musim panas dihitung agent dari `TimeGMT()`. Overlap = London dan New York sama-sama buka. Posisi terbuka tidak ditutup. EA yang memakai `AlgoDeskGuard.mqh` 0.16 menerima alasan `AD_ENTRY_SESSION`; EA lain ditutup entry barunya oleh agent bila `InpCloseBlockedEntry` aktif. `entry_state` bernilai `session` saat filter sedang menahan entry.
+
+```json
+"protection": { "enabled": true, "limit_mode": "amount", "limit_value": 1000, "limit_pct": 10.33, "limit_amount": 1000, "close_all_on_limit": false, ... },
+"sessions": { "enabled": true, "allow": "asia,london", "active": "london", "blocked": false,
+  "asia_hours": "09:00-18:00", "london_hours": "08:00-17:00", "newyork_hours": "08:00-17:00", "gmt": 1792052295 }
+```
+
 ### Strategi StopReverse (0.15)
 
 Agent menjalankan strategi XAU StopReverse sendiri (magic `InpSrMagic`, default 777001), jadi EA XAU_StopReverse terpisah tidak perlu dipasang lagi. Hidup/mati dan pengaturan (simbol, lot, jarak D, langkah trailing S) diatur dari halaman EA Expert di dashboard lewat perintah `sr_set`/`sr_close`, disimpan per akun di `MQL5\Files\AlgoDesk\sr_<login>.txt`. Default mati.
@@ -135,6 +147,9 @@ Dicek tiap `InpCommandPollSec` detik. Backend hanya mengembalikan perintah yang 
 | `set_limit` | `value` (0.5–20) | Ubah batas rugi %; menaikkan batas tidak mencabut blokir hari ini |
 | `sr_set` | salah satu dari `enabled`, `symbol`, `lots`, `dist`, `step` | Ubah StopReverse; field yang tidak dikirim tetap. Ganti simbol ditolak selama ada posisi/order |
 | `sr_close` | | Tutup semua posisi dan order StopReverse lalu matikan strategi |
+| `risk_set` | `enabled`, dan/atau `mode` (`pct`/`amount`) + `value` | Proteksi rugi harian ON/OFF, batas % dari baseline atau nominal tetap (mata uang akun). Blokir hari ini dicabut bila rugi sudah di bawah batas baru |
+| `risk_reset` | | Buka blokir hari ini; bila rugi masih melewati batas, baseline diganti equity sekarang |
+| `session_set` | `enabled`, `allow` (mis. `asia,london,overlap`), `asia_hours`/`london_hours`/`newyork_hours` (`HH:MM-HH:MM`) | Filter sesi trading untuk semua EA |
 
 Backend wajib memeriksa role (RBAC) sebelum menyimpan perintah. Agent tidak mengenal pengguna.
 

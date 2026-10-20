@@ -9,16 +9,17 @@
 //|    entries are blocked/paused (for EAs that lack the guard).     |
 //| 3. Telemetry: posts account, positions and Market Watch data to  |
 //|    the backend, signed with HMAC-SHA256.                         |
-//| 4. Commands: polls the backend for pause/resume/enable/disable/  |
-//|    set_limit commands and acknowledges each one.                 |
+//| 4. Commands: polls the backend for pause/resume/enable/disable,  |
+//|    loss-limit (risk_set/risk_reset) and session-filter           |
+//|    (session_set) commands and acknowledges each one.             |
 //| 5. Strategy: XAU StopReverse (StopReverse.mqh), switched on/off  |
 //|    and tuned from the dashboard (sr_set / sr_close commands).    |
 //|                                                                  |
 //| Attach to ONE chart per terminal/account.                        |
 //+------------------------------------------------------------------+
 #property copyright "AlgoDesk"
-#property version   "0.15"
-#property description "AlgoDesk MT5 Agent: proteksi rugi harian, telemetri, kanal perintah, dan strategi StopReverse."
+#property version   "0.16"
+#property description "AlgoDesk MT5 Agent: proteksi rugi harian, filter sesi, telemetri, kanal perintah, dan strategi StopReverse."
 
 #include <Trade/Trade.mqh>
 #include <AlgoDesk/AlgoDeskGuard.mqh>
@@ -26,7 +27,7 @@
 
 //--- protection
 input group "Proteksi harian"
-input double InpLossLimitPct      = 3.0;    // Batas rugi harian (% dari equity awal hari)
+input double InpLossLimitPct      = 3.0;    // Batas rugi harian awal (%); setelah itu diatur dari Risk Center dashboard
 input int    InpDayStartHour      = 0;      // Jam mulai hari (jam server broker, 0-23)
 input bool   InpCloseBlockedEntry = true;   // Tutup posisi baru yang dibuka saat entry diblokir/dijeda
 input bool   InpCloseAllOnLimit   = false;  // Tutup SEMUA posisi saat batas tercapai
@@ -58,7 +59,7 @@ input ulong  InpSrMagic           = 777001; // Magic number StopReverse
 input int    InpSrSlippage        = 30;     // Slippage maksimal (points)
 input bool   InpSrLogCSV          = true;   // Catat transaksi & error ke MQL5\Files\AlgoDesk
 
-#define AGENT_VERSION "0.15"
+#define AGENT_VERSION "0.16"
 
 // Timeframes the dashboard's Market Watch can switch between.
 #define NTF 9
@@ -127,6 +128,7 @@ void EnsureBaseline()
       AD_Set("BASE", ref);
       AD_Set("BLOCK", 0.0);
       g_limitLogged = false;
+      ApplyRiskConfig();
       PrintFormat("AlgoDesk: baseline %.2f tidak cocok dengan akun %I64d, diganti %.2f",
                   base, AccountInfoInteger(ACCOUNT_LOGIN), ref);
       return;
@@ -135,11 +137,13 @@ void EnsureBaseline()
    AD_Set("BASE", equity);
    AD_Set("BLOCK", 0.0);
    g_limitLogged = false;
+   ApplyRiskConfig();
    PrintFormat("AlgoDesk: hari baru %s, baseline equity %.2f", TimeToString(dayStart), equity);
   }
 
 double Baseline()   { return AD_Get("BASE", 0.0); }
-double LimitPct()   { return AD_Get("LIMIT_PCT", InpLossLimitPct); }
+// Effective limit as % of the baseline, as the guard reads it; 0 = protection off.
+double LimitPct()   { return AD_Get("LIMIT_PCT", 0.0); }
 double LossLimit()  { return Baseline() * LimitPct() / 100.0; }
 double LossUsed()   { return MathMax(0.0, Baseline() - AccountInfoDouble(ACCOUNT_EQUITY)); }
 
@@ -181,12 +185,58 @@ string EntryStateText()
   {
    if(AD_Get("BLOCK", 0.0) > 0.5) return "blocked";
    if(AD_Get("PAUSE", 0.0) > 0.5) return "paused";
+   if(AD_Get("SESS", 0.0) > 0.5)  return "session";
    return "allowed";
+  }
+
+//--- Daily-loss settings from the dashboard's Risk Center (risk_set). They live in Global Variables
+//--- so they survive restarts; InpLossLimitPct only seeds them on the first run.
+//--- CFG_ON 1/0, CFG_MODE 0 = % of the day's baseline, 1 = fixed amount, CFG_PCT, CFG_AMT.
+bool RiskOn()     { return AD_Get("CFG_ON", 1.0) > 0.5; }
+bool RiskAmount() { return AD_Get("CFG_MODE", 0.0) > 0.5; }
+
+// Turns the settings into LIMIT_PCT. A fixed amount becomes a percentage of today's baseline,
+// so it is recomputed whenever the baseline changes.
+void ApplyRiskConfig()
+  {
+   double pct = 0.0;
+   if(RiskOn())
+     {
+      if(!RiskAmount())
+         pct = AD_Get("CFG_PCT", InpLossLimitPct);
+      else if(Baseline() > 0.0)
+         pct = AD_Get("CFG_AMT", 0.0) / Baseline() * 100.0;
+     }
+   AD_Set("LIMIT_PCT", pct);
+   if(pct <= 0.0)
+     {
+      AD_Set("BLOCK", 0.0);
+      g_limitLogged = false;
+     }
+  }
+
+string RiskText()
+  {
+   if(!RiskOn())
+      return "proteksi rugi harian dimatikan";
+   if(RiskAmount())
+      return StringFormat("batas rugi harian %.2f (%.2f%% dari baseline)", AD_Get("CFG_AMT", 0.0), LimitPct());
+   return StringFormat("batas rugi harian %.2f%% (%.2f)", LimitPct(), LossLimit());
+  }
+
+// Lifts today's block when the loss is back under the (new) limit. True when it lifted one.
+bool LiftBlockIfBelow()
+  {
+   if(AD_Get("BLOCK", 0.0) <= 0.5 || LimitPct() <= 0.0 || LossUsed() >= LossLimit())
+      return false;
+   AD_Set("BLOCK", 0.0);
+   g_limitLogged = false;
+   return true;
   }
 
 void CheckLimit()
   {
-   if(AD_Get("BLOCK", 0.0) > 0.5 || Baseline() <= 0.0)
+   if(AD_Get("BLOCK", 0.0) > 0.5 || Baseline() <= 0.0 || LimitPct() <= 0.0)
       return;
    if(LossUsed() < LossLimit())
       return;
@@ -199,6 +249,132 @@ void CheckLimit()
      }
    if(InpCloseAllOnLimit)
       CloseWatchedPositions("batas rugi harian");
+  }
+
+//+------------------------------------------------------------------+
+//| Trading sessions (filter set from the dashboard)                 |
+//+------------------------------------------------------------------+
+// Each session's hours are kept in its own city's local time, as traders quote them:
+// Asia = Tokyo (UTC+9, no daylight saving), London (GMT/BST), New York (EST/EDT).
+// Overlap = London and New York both open. Settings live in Global Variables:
+// SESS_ON, SESS_MASK (bits below), SESS_A_S/E, SESS_L_S/E, SESS_N_S/E (minutes after local midnight).
+// SESS = 1 while the filter blocks new entries; AlgoDesk_Check reads it.
+#define SESS_ASIA    1
+#define SESS_LONDON  2
+#define SESS_NY      4
+#define SESS_OVERLAP 8
+
+datetime SundayFrom(const int y, const int m, const int day, const int hourUtc, const bool backwards)
+  {
+   MqlDateTime t = {};
+   t.year = y; t.mon = m; t.day = day; t.hour = hourUtc;
+   datetime d = StructToTime(t);
+   MqlDateTime c;
+   TimeToStruct(d, c);
+   return backwards ? d - c.day_of_week * 86400 : d + ((7 - c.day_of_week) % 7) * 86400;
+  }
+
+// UTC offsets in hours. EU: last Sunday of March to last Sunday of October, 01:00 UTC.
+// US: second Sunday of March 02:00 EST (07:00 UTC) to first Sunday of November 02:00 EDT (06:00 UTC).
+int LondonOffset(const datetime gmt)
+  {
+   MqlDateTime c;
+   TimeToStruct(gmt, c);
+   return (gmt >= SundayFrom(c.year, 3, 31, 1, true) && gmt < SundayFrom(c.year, 10, 31, 1, true)) ? 1 : 0;
+  }
+
+int NewYorkOffset(const datetime gmt)
+  {
+   MqlDateTime c;
+   TimeToStruct(gmt, c);
+   return (gmt >= SundayFrom(c.year, 3, 8, 7, false) && gmt < SundayFrom(c.year, 11, 1, 6, false)) ? -4 : -5;
+  }
+
+int LocalMinute(const datetime gmt, const int offsetHours)
+  {
+   return (int)((((long)gmt + offsetHours * 3600) % 86400) / 60);
+  }
+
+// [start, end) in minutes; a window that passes midnight has start > end.
+bool InWindow(const int minute, const int start, const int end)
+  {
+   return start <= end ? (minute >= start && minute < end) : (minute >= start || minute < end);
+  }
+
+int ActiveSessions(const datetime gmt)
+  {
+   int m = 0;
+   if(InWindow(LocalMinute(gmt, 9), (int)AD_Get("SESS_A_S", 540), (int)AD_Get("SESS_A_E", 1080)))
+      m |= SESS_ASIA;
+   if(InWindow(LocalMinute(gmt, LondonOffset(gmt)), (int)AD_Get("SESS_L_S", 480), (int)AD_Get("SESS_L_E", 1020)))
+      m |= SESS_LONDON;
+   if(InWindow(LocalMinute(gmt, NewYorkOffset(gmt)), (int)AD_Get("SESS_N_S", 480), (int)AD_Get("SESS_N_E", 1020)))
+      m |= SESS_NY;
+   if((m & SESS_LONDON) != 0 && (m & SESS_NY) != 0)
+      m |= SESS_OVERLAP;
+   return m;
+  }
+
+string SessionNames(const int m)
+  {
+   string s = "";
+   if((m & SESS_ASIA) != 0)    s += ",asia";
+   if((m & SESS_LONDON) != 0)  s += ",london";
+   if((m & SESS_NY) != 0)      s += ",newyork";
+   if((m & SESS_OVERLAP) != 0) s += ",overlap";
+   return StringSubstr(s, 1);
+  }
+
+int SessionMask(const string names)
+  {
+   int m = 0;
+   string parts[];
+   int n = StringSplit(names, ',', parts);
+   for(int i = 0; i < n; i++)
+     {
+      if(parts[i] == "asia")    m |= SESS_ASIA;
+      if(parts[i] == "london")  m |= SESS_LONDON;
+      if(parts[i] == "newyork") m |= SESS_NY;
+      if(parts[i] == "overlap") m |= SESS_OVERLAP;
+     }
+   return m;
+  }
+
+string HoursText(const string key)
+  {
+   int s = (int)AD_Get(key + "_S", key == "SESS_A" ? 540 : 480), e = (int)AD_Get(key + "_E", key == "SESS_A" ? 1080 : 1020);
+   return StringFormat("%02d:%02d-%02d:%02d", s / 60, s % 60, e / 60, e % 60);
+  }
+
+// "HH:MM-HH:MM" into SESS_x_S/E. False when malformed.
+bool SetHours(const string key, const string v)
+  {
+   if(StringLen(v) != 11 || StringSubstr(v, 2, 1) != ":" || StringSubstr(v, 5, 1) != "-" || StringSubstr(v, 8, 1) != ":")
+      return false;
+   int s = (int)StringToInteger(StringSubstr(v, 0, 2)) * 60 + (int)StringToInteger(StringSubstr(v, 3, 2));
+   int e = (int)StringToInteger(StringSubstr(v, 6, 2)) * 60 + (int)StringToInteger(StringSubstr(v, 9, 2));
+   if(s < 0 || s >= 1440 || e < 0 || e >= 1440 || s == e)
+      return false;
+   AD_Set(key + "_S", s);
+   AD_Set(key + "_E", e);
+   return true;
+  }
+
+bool SessionFilterOn() { return AD_Get("SESS_ON", 0.0) > 0.5; }
+int  SessionAllowMask() { return (int)AD_Get("SESS_MASK", SESS_ASIA | SESS_LONDON | SESS_NY); }
+
+void UpdateSessionBlock()
+  {
+   bool block = SessionFilterOn() && (ActiveSessions(TimeGMT()) & SessionAllowMask()) == 0;
+   if(block == (AD_Get("SESS", 0.0) > 0.5))
+      return;
+   AD_Set("SESS", block ? 1.0 : 0.0);
+   Print(block ? "AlgoDesk: di luar sesi yang diizinkan, entry baru ditahan" : "AlgoDesk: sesi yang diizinkan dibuka, entry diizinkan lagi");
+  }
+
+string SessionText()
+  {
+   return SessionFilterOn() ? "filter sesi aktif: " + SessionNames(SessionAllowMask()) : "filter sesi mati";
   }
 
 //+------------------------------------------------------------------+
@@ -683,11 +859,25 @@ void SendTelemetry()
       + ",\"protection\":{" +
          "\"day_start\":" + IntegerToString((long)AD_Get("DAY", 0.0))
          + ",\"baseline\":" + N(Baseline())
+         + ",\"enabled\":" + (RiskOn() ? "true" : "false")
+         + ",\"limit_mode\":" + J(RiskAmount() ? "amount" : "pct")
+         + ",\"limit_value\":" + N(RiskAmount() ? AD_Get("CFG_AMT", 0.0) : AD_Get("CFG_PCT", InpLossLimitPct))
+         + ",\"close_all_on_limit\":" + (InpCloseAllOnLimit ? "true" : "false")
          + ",\"limit_pct\":" + N(LimitPct())
          + ",\"limit_amount\":" + N(LossLimit())
          + ",\"loss_used\":" + N(LossUsed())
          + ",\"entry_state\":" + J(EntryStateText())
          + ",\"disabled_magics\":" + DisabledMagicsJson()
+      + "}"
+      + ",\"sessions\":{" +
+         "\"enabled\":" + (SessionFilterOn() ? "true" : "false")
+         + ",\"allow\":" + J(SessionNames(SessionAllowMask()))
+         + ",\"active\":" + J(SessionNames(ActiveSessions(TimeGMT())))
+         + ",\"blocked\":" + (AD_Get("SESS", 0.0) > 0.5 ? "true" : "false")
+         + ",\"asia_hours\":" + J(HoursText("SESS_A"))
+         + ",\"london_hours\":" + J(HoursText("SESS_L"))
+         + ",\"newyork_hours\":" + J(HoursText("SESS_N"))
+         + ",\"gmt\":" + IntegerToString((long)TimeGMT())
       + "}"
       + ",\"pl\":{" +
          "\"realized\":" + N(realized)
@@ -831,10 +1021,96 @@ bool ApplyCommand(const string type, const string obj, string &msg)
          msg = "batas harus 0.5 sampai 20 persen";
          return false;
         }
-      AD_Set("LIMIT_PCT", v);
-      msg = StringFormat("batas rugi diubah ke %.2f%%", v);
-      // A higher limit does not lift a block already set today; only the daily reset does.
+      AD_Set("CFG_ON", 1.0);
+      AD_Set("CFG_MODE", 0.0);
+      AD_Set("CFG_PCT", v);
+      ApplyRiskConfig();
+      msg = RiskText();
+      if(LiftBlockIfBelow())
+         msg += ", blokir dicabut karena rugi masih di bawah batas";
       CheckLimit();
+      return true;
+     }
+   if(type == "risk_set")
+     {
+      string en = JsonValue(obj, "enabled"), mode = JsonValue(obj, "mode");
+      double v = StringToDouble(JsonValue(obj, "value"));
+      if(mode == "pct" && (v < 0.5 || v > 20.0))
+        {
+         msg = "batas harus 0.5 sampai 20 persen";
+         return false;
+        }
+      if(mode == "amount" && v <= 0.0)
+        {
+         msg = "nominal batas harus lebih dari 0";
+         return false;
+        }
+      if(mode == "pct")
+        {
+         AD_Set("CFG_MODE", 0.0);
+         AD_Set("CFG_PCT", v);
+        }
+      if(mode == "amount")
+        {
+         AD_Set("CFG_MODE", 1.0);
+         AD_Set("CFG_AMT", v);
+        }
+      if(en == "true" || en == "false")
+         AD_Set("CFG_ON", en == "true" ? 1.0 : 0.0);
+      ApplyRiskConfig();
+      msg = RiskText();
+      if(LiftBlockIfBelow())
+         msg += ", blokir dicabut karena rugi masih di bawah batas";
+      CheckLimit();
+      return true;
+     }
+   if(type == "risk_reset")
+     {
+      if(AD_Get("BLOCK", 0.0) <= 0.5)
+        {
+         msg = "tidak ada blokir";
+         return true;
+        }
+      if(LiftBlockIfBelow())
+        {
+         msg = "blokir dicabut";
+         return true;
+        }
+      // Still past the limit: count today's loss again from the current equity.
+      AD_Set("BASE", AccountInfoDouble(ACCOUNT_EQUITY));
+      AD_Set("BLOCK", 0.0);
+      g_limitLogged = false;
+      ApplyRiskConfig();
+      msg = StringFormat("blokir dicabut, rugi hari ini dihitung ulang dari equity %.2f", Baseline());
+      return true;
+     }
+   if(type == "session_set")
+     {
+      string en = JsonValue(obj, "enabled"), allow = JsonValue(obj, "allow");
+      string hrs[3]  = {"asia_hours", "london_hours", "newyork_hours"};
+      string keys[3] = {"SESS_A", "SESS_L", "SESS_N"};
+      for(int i = 0; i < 3; i++)
+        {
+         string v = JsonValue(obj, hrs[i]);
+         if(v != "" && v != "null" && !SetHours(keys[i], v))
+           {
+            msg = "jam sesi tidak valid: " + v;
+            return false;
+           }
+        }
+      if(allow != "" && allow != "null")
+        {
+         if(SessionMask(allow) == 0)
+           {
+            msg = "pilih minimal satu sesi";
+            return false;
+           }
+         AD_Set("SESS_MASK", SessionMask(allow));
+        }
+      if(en == "true" || en == "false")
+         AD_Set("SESS_ON", en == "true" ? 1.0 : 0.0);
+      UpdateSessionBlock();
+      msg = SessionText();
       return true;
      }
    if(type == "sr_set")
@@ -882,12 +1158,12 @@ void ShowStatus()
                        : "terhubung, terakhir " + TimeToString(g_lastBackendOk, TIME_SECONDS));
    Comment(StringFormat("AlgoDesk Agent %s  |  akun %I64d\n" +
                         "Baseline %.2f  |  Batas %.2f%% (%.2f)\n" +
-                        "Rugi tercatat %.2f  |  Entry: %s\n" +
+                        "Rugi tercatat %.2f  |  Entry: %s  |  %s\n" +
                         "Backend: %s\n" +
                         "StopReverse %s: %s",
                         AGENT_VERSION, AccountInfoInteger(ACCOUNT_LOGIN),
                         Baseline(), LimitPct(), LossLimit(),
-                        LossUsed(), EntryStateText(), backend,
+                        LossUsed(), EntryStateText(), SessionText(), backend,
                         g_sr.on ? "ON" : "OFF", g_sr.sym + " " + g_srStatus));
   }
 
@@ -909,16 +1185,19 @@ int OnInit()
    if(BackendEnabled() && StringFind(InpBackendUrl, "https://") != 0)
       Print("AlgoDesk: PERINGATAN, backend tidak memakai HTTPS");
 
-   // The input value wins at start-up; later changes come from set_limit commands.
-   AD_Set("LIMIT_PCT", InpLossLimitPct);
+   // The input seeds the limit on the first run only; later changes come from the dashboard.
+   if(!GlobalVariableCheck(AD_Key("CFG_PCT")))
+      AD_Set("CFG_PCT", InpLossLimitPct);
    ParseWatchMagics();
    EnsureBaseline();
+   ApplyRiskConfig();
+   UpdateSessionBlock();
    BuildSymbols();
    g_trade.SetAsyncMode(false);
    SR_Init(InpSrMagic, InpSrSlippage, InpSrLogCSV);
    // 250 ms so the strategy trails promptly even when the chart is another symbol
    EventSetMillisecondTimer(250);
-   PrintFormat("AlgoDesk: agent aktif, baseline %.2f, batas %.2f%%", Baseline(), LimitPct());
+   PrintFormat("AlgoDesk: agent aktif, baseline %.2f, %s, %s", Baseline(), RiskText(), SessionText());
    return INIT_SUCCEEDED;
   }
 
@@ -933,6 +1212,7 @@ void OnTimer()
   {
    EnsureBaseline();
    CheckLimit();
+   UpdateSessionBlock();
    AD_Set("HB", (double)TimeGMT());
    SR_Run();
 

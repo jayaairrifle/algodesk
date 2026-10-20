@@ -288,3 +288,33 @@ def test_strategy_commands_are_checked(app):
     assert trader.post("/api/commands", json={"type": "sr_set", "lots": 0}).status_code == 422
     assert trader.post("/api/commands", json={"type": "sr_set", "symbol": "XAU\"USD"}).status_code == 422
     assert trader.post("/api/commands", json={"type": "sr_close"}).status_code == 200
+
+
+def test_risk_and_session_settings_reach_the_agent(app):
+    admin = login(app, "admin")
+    agent = TestClient(app)
+    agent_call(agent, "POST", "/agent/telemetry", TELEMETRY)
+    admin.post("/api/commands", json={"type": "risk_set", "enabled": True, "mode": "amount", "value": 250})
+    admin.post("/api/commands", json={"type": "risk_reset"})
+    admin.post("/api/commands", json={"type": "session_set", "enabled": True, "allow": "london,overlap",
+                                      "london_hours": "08:00-17:00"})
+    risk, reset, sess = agent_call(agent, "GET", "/agent/commands").json()["commands"]
+    assert (risk["type"], risk["enabled"], risk["mode"], risk["value"]) == ("risk_set", True, "amount", 250)
+    assert reset["type"] == "risk_reset"
+    assert (sess["enabled"], sess["allow"], sess["london_hours"]) == (True, "london,overlap", "08:00-17:00")
+    # the agent finds keys by their quoted name, so no key may equal a session name
+    assert not {"asia", "london", "newyork", "overlap"} & set(sess)
+
+
+def test_risk_and_session_commands_are_checked(app):
+    admin, trader = login(app, "admin"), login(app, "trader")
+    for body in ({"type": "risk_set", "enabled": False}, {"type": "risk_reset"}, {"type": "session_set", "enabled": True}):
+        assert trader.post("/api/commands", json=body).status_code == 403
+    bad = [{"type": "risk_set"}, {"type": "risk_set", "mode": "pct"}, {"type": "risk_set", "mode": "pct", "value": 40},
+           {"type": "risk_set", "mode": "amount", "value": 0}, {"type": "session_set"},
+           {"type": "session_set", "allow": ""}, {"type": "session_set", "allow": "tokyo"},
+           {"type": "session_set", "asia_hours": "9:00-18:00"}, {"type": "session_set", "london_hours": "08:00-24:00"}]
+    for body in bad:
+        assert admin.post("/api/commands", json=body).status_code == 422, body
+    assert admin.post("/api/commands", json={"type": "risk_set", "enabled": False}).status_code == 200
+    assert admin.post("/api/commands", json={"type": "session_set", "allow": "asia,london,newyork,overlap"}).status_code == 200
