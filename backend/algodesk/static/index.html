@@ -139,6 +139,8 @@ main { padding: 18px 20px 24px; min-width: 0; display: flex; flex-direction: col
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
 .seg button { background: none; border: 0; padding: 6px 13px; cursor: pointer; color: var(--fg-2); font-size: 12.5px; border-right: 1px solid var(--line); }
 .seg button:last-child { border-right: 0; }
+.seg.scroll { max-width: 100%; overflow-x: auto; }
+.seg.scroll button { flex: none; }
 .seg button.on { background: var(--accent-bg); color: var(--fg); box-shadow: inset 0 0 0 1px var(--accent); }
 select, input { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font-size: 13px; }
 label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--fg-2); }
@@ -904,10 +906,19 @@ td.c, th.c { text-align: center; }
   }
 
   // ---------- other pages ----------
-  const structTxt = s => s.structure === 'bull' ? '<b class="up">HH · HL</b> Bullish' : s.structure === 'bear' ? '<b class="down">LH · LL</b> Bearish' : '<b>MIXED</b> Netral';
+  const structTxt = s => s.structure === 'bull' ? '<b class="up">HH · HL</b> Bullish' : s.structure === 'bear' ? '<b class="down">LH · LL</b> Bearish' : s.structure === 'none' ? '<span class="muted">–</span>' : '<b>MIXED</b> Netral';
+  // Agent 0.14+ sends RSI/ATR/structure/signal for every timeframe under symbols[].tf; older agents
+  // only for their one timeframe, which then is the only choice that has values.
+  const MW_TFS = [['M1', 'M1'], ['M5', 'M5'], ['M15', 'M15'], ['M30', 'M30'], ['H1', 'H1'], ['H4', 'H4'], ['D1', 'D1'], ['W1', 'W1'], ['MN1', 'MN']];
+  S.mwTf = pref.get('mwTf');
   function marketCard() {
-    const syms = tel()?.symbols || [];
-    return `<section class="card"><div class="ph"><h2>Market Watch</h2><span class="muted">Timeframe ${esc(tel()?.timeframe || '–')} · ${syms.length} simbol</span></div>
+    const syms = (tel()?.symbols || []).map(s => {
+      const tf = S.mwTf || tel().timeframe, v = s.tf ? s.tf[tf] : tf === tel().timeframe ? s : null;
+      return { ...s, rsi: v?.rsi ?? null, atr_points: v?.atr_points ?? null, structure: v?.structure || 'none', signal: v?.signal || 'none' };
+    });
+    const cur = S.mwTf || tel()?.timeframe, oldAgent = syms.length && !tel().symbols[0].tf;
+    return `<section class="card"><div class="ph"><div><h2>Market Watch</h2><span class="muted">Timeframe ${esc(MW_TFS.find(t => t[0] === cur)?.[1] || cur || '–')} · ${syms.length} simbol${oldAgent && cur !== tel().timeframe ? ` · agent ini hanya mengirim ${esc(tel().timeframe)}, perbarui ke 0.14 untuk timeframe lain` : ''}</span></div>
+      <div class="seg scroll" role="group" aria-label="Timeframe">${MW_TFS.map(([k, l]) => `<button data-mwtf="${k}" class="${cur === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
       <div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Bid</th><th class="r">Ask</th><th class="r">Change</th><th class="r">Spread</th><th class="r">RSI</th><th class="r">ATR</th><th>Struktur</th><th>Sinyal</th><th></th></tr></thead><tbody>
       ${syms.map(s => { const ch = s.day_open ? (s.bid - s.day_open) / s.day_open * 100 : null; return `<tr><td><b>${esc(s.symbol)}</b></td><td class="r num">${fmtPx(s.bid, s.digits)}</td><td class="r num">${fmtPx(s.ask, s.digits)}</td>
         <td class="r num ${cls(ch)}">${pct(ch)}</td><td class="r num">${s.spread} pt</td><td class="r num">${s.rsi == null ? '–' : s.rsi.toFixed(1)}</td><td class="r num">${s.atr_points == null ? '–' : s.atr_points.toFixed(0) + ' pt'}</td>
@@ -1134,6 +1145,8 @@ td.c, th.c { text-align: center; }
     const ub = e.target.closest('#userBtn'), menu = $('userMenu');
     if (ub) { menu.hidden = !menu.hidden; ub.setAttribute('aria-expanded', String(!menu.hidden)); return; }
     if (!e.target.closest('.user')) menu.hidden = true;
+    const mw = e.target.closest('[data-mwtf]');
+    if (mw) { S.mwTf = mw.dataset.mwtf; pref.set('mwTf', S.mwTf); render(); return; }
     const d = e.target.closest('[data-eq],[data-dp],[data-perf],[data-hsym]');
     if (d) {
       if (d.dataset.eq) S.eqTab = d.dataset.eq;

@@ -71,7 +71,7 @@ Dikirim tiap `InpTelemetrySec` detik.
 
 ```json
 {
-  "agent_id": "vps-01", "agent_version": "0.13", "sent_at": 1792027095, "server_time": 1792052295,
+  "agent_id": "vps-01", "agent_version": "0.14", "sent_at": 1792027095, "server_time": 1792052295,
   "terminal_connected": true,
   "account": { "login": 884921, "server": "Broker-Demo 01", "company": "...", "currency": "USD", "demo": true,
                "balance": 10246.38, "equity": 10203.39, "margin": 2223.22, "free_margin": 7980.17, "margin_level": 458.94 },
@@ -82,7 +82,9 @@ Dikirim tiap `InpTelemetrySec` detik.
   "positions": [ { "ticket": 123, "symbol": "EURUSD", "digits": 5, "side": "BUY", "volume": 0.02, "price_open": 1.08553,
                    "sl": 1.08112, "tp": 1.08920, "profit": -18.20, "magic": 260101, "comment": "", "time": 1792039000 } ],
   "symbols": [ { "symbol": "EURUSD", "digits": 5, "bid": 1.08462, "ask": 1.08471, "spread": 9, "rsi": 56.8,
-                 "atr_points": 632.0, "structure": "bull", "signal": "BUY" } ],
+                 "atr_points": 632.0, "structure": "bull", "signal": "BUY",
+                 "tf": { "M1": { "rsi": 61.2, "atr_points": 41.0, "structure": "bull", "signal": "BUY" }, "...": {},
+                         "MN1": { "rsi": 48.0, "atr_points": 15200.0, "structure": "mixed", "signal": "none" } } } ],
   "timeframe": "H1"
 }
 ```
@@ -90,6 +92,8 @@ Dikirim tiap `InpTelemetrySec` detik.
 `entry_state`: `allowed`, `paused`, atau `blocked`. `pl.realized` adalah hasil deal tertutup sejak awal hari server (profit + swap + komisi + fee, tanpa deposit/penarikan), sama seperti tab History MT5. `pl.floating` adalah profit + swap posisi terbuka. `fx.usd_idr` diambil dari simbol `USDIDR*` broker, atau 0 kalau broker tidak menyediakannya. `atr_points` dalam point simbol (broker 5 digit: 10 point = 1 pip).
 
 `terminal` (0.13) berisi `build`, `memory_mb`, `memory_total_mb`, `cpu_cores`, `ping_ms`, dan `trade_allowed`. Setiap simbol juga membawa `day_open` (harga buka D1), dan `account` membawa `margin_call`, `stop_out`, serta `leverage`.
+
+Sejak 0.14 setiap simbol membawa `tf`: RSI, ATR, struktur dan sinyal untuk M1, M5, M15, M30, H1, H4, D1, W1 dan MN1, dipakai pilihan timeframe di Market Watch dashboard. Kolom `rsi`/`atr_points`/`structure`/`signal` di level simbol tetap untuk `InpSignalTf` (`timeframe`). Input `InpAllTimeframes = false` mematikan timeframe lain untuk menghemat memori terminal.
 
 ### `POST /agent/deals`
 
