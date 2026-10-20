@@ -216,9 +216,9 @@ def test_usd_idr_rate_falls_back_to_the_next_free_api():
             return {"rates": {"IDR": 3.2}}  # nonsense: rejected
         return {"usd": {"idr": 16250.5}}
 
-    fx = UsdIdr(sources=[("a", "https://first", lambda d: d["rates"]["IDR"]),
-                         ("b", "https://second", lambda d: d["rates"]["IDR"]),
-                         ("c", "https://third", lambda d: d["usd"]["idr"])], fetch=fetch)
+    fx = UsdIdr(sources=[("a", "https://first", lambda d: d["rates"]["IDR"], True),
+                         ("b", "https://second", lambda d: d["rates"]["IDR"], True),
+                         ("c", "https://third", lambda d: d["usd"]["idr"], False)], fetch=fetch)
     fx.refresh()
     assert (fx.rate, fx.source) == (16250.5, "c")
 
@@ -226,11 +226,23 @@ def test_usd_idr_rate_falls_back_to_the_next_free_api():
 def test_fx_endpoint_needs_login_and_returns_the_cached_rate(app):
     from algodesk.fx import UsdIdr
 
-    app.state.fx = UsdIdr(sources=[("test", "https://x", lambda d: d["r"])], fetch=lambda url: {"r": 16000})
+    app.state.fx = UsdIdr(sources=[("test", "https://x", lambda d: d["r"], True)], fetch=lambda url: {"r": 16000})
     app.state.fx.refresh()
     assert TestClient(app).get("/api/fx").status_code == 401
     out = login(app, "viewer").get("/api/fx").json()
     assert out["usd_idr"] == 16000 and out["source"] == "test"
+    assert out["live"] is True and "history" not in out
+    hist = login(app, "viewer").get("/api/fx?history=1").json()["history"]
+    assert len(hist) == 1 and hist[0][1] == 16000
+
+
+def test_indodax_ticker_is_read_as_the_live_usd_price():
+    from algodesk.fx import SOURCES, UsdIdr
+
+    sample = {"ticker": {"high": "16420", "low": "16280", "last": "16395", "buy": "16394", "sell": "16396"}}
+    fx = UsdIdr(sources=SOURCES[:1], fetch=lambda url: sample)
+    fx.refresh()
+    assert (fx.rate, fx.live) == (16395.0, True)
 
 
 def test_balance_history_is_rebuilt_from_deals(app):

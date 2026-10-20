@@ -436,9 +436,9 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
         return {"start": day_start, "deals": [dict(r) for r in rows]}
 
     @app.get(API + "/fx")
-    def fx(user=Depends(current_user)):
-        """USD/IDR from a free public API, for accounts whose broker has no USDIDR symbol."""
-        return app.state.fx.get()
+    def fx(history: bool = False, user=Depends(current_user)):
+        """USD/IDR from a free public API (live USDT/IDR market first), optionally with the last 24 hours."""
+        return app.state.fx.get(history)
 
     # ------------------------------------------------------------------ commands
     @app.post(API + "/commands")
