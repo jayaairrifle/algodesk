@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="id">
 <head>
+<script>try { const t = localStorage.getItem('algodesk.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AlgoDesk MT5</title>
@@ -82,6 +83,13 @@ button { font: inherit; color: inherit; }
 .tb-acct .ttl { font-weight: 600; font-size: 12.5px; }
 .tb-time { flex-direction: column; align-items: flex-start !important; justify-content: center; font-size: 13px; flex: none; gap: 2px; }
 .tb-time select { margin-top: 2px; }
+.tb-theme { flex: none; border-right: 0 !important; padding-right: 4px !important; }
+.tswitch { position: relative; width: 60px; height: 30px; border-radius: 15px; border: 1px solid var(--line); background: var(--panel-3); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; color: var(--fg-2); }
+.tswitch svg { width: 14px; height: 14px; position: relative; z-index: 1; }
+.tswitch .knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); transition: transform .2s; }
+.tswitch[aria-checked="true"] .knob { transform: translateX(30px); }
+.tswitch[aria-checked="false"] .i-moon, .tswitch[aria-checked="true"] .i-sun { color: #fff; }
+.tswitch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .user { position: relative; border-right: 0 !important; flex: none; }
 .user > button { display: flex; align-items: center; gap: 10px; background: none; border: 0; cursor: pointer; padding: 4px; text-align: left; }
 .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-bg); color: var(--fg); display: grid; place-items: center; font-weight: 600; font-size: 14px; }
@@ -379,6 +387,8 @@ td.c, th.c { text-align: center; }
     <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
     <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
     <symbol id="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   </defs>
 </svg>
@@ -400,6 +410,8 @@ td.c, th.c { text-align: center; }
   <div class="tb-conn" id="tbConn"></div>
   <div class="tb-acct" id="tbAcct"></div>
   <div class="tb-time"><span id="tbDate"></span><b id="tbClock" class="mono"></b></div>
+  <div class="tb-theme"><button id="themeBtn" class="tswitch" role="switch" aria-checked="false" aria-label="Tema terang" title="Ganti tema gelap / terang">
+    <span class="knob"></span><svg class="i-moon"><use href="#i-moon"/></svg><svg class="i-sun"><use href="#i-sun"/></svg></button></div>
   <div class="user">
     <button id="userBtn" aria-haspopup="true" aria-expanded="false">
       <span class="avatar" id="avatar">–</span>
@@ -475,6 +487,11 @@ td.c, th.c { text-align: center; }
   // Settings. The picked currency and the manual rate stay in this browser only.
   const pref = { get: k => { try { return localStorage.getItem('algodesk.' + k); } catch { return null; } },
                  set: (k, v) => { try { localStorage.setItem('algodesk.' + k, v); } catch {} } };
+  // ---------- theme ----------
+  // Light or dark, as the viewer picks with the switch in the top bar; until then the system setting.
+  const theme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  const showTheme = () => { const b = $('themeBtn'); if (b) b.setAttribute('aria-checked', String(theme() === 'light')); };
+  showTheme();
   const CURS = ['USD', 'USC', 'IDR'];
   S.cur = pref.get('cur');
   const normCur = c => { c = String(c || 'USD').toUpperCase(); return c.startsWith('USC') || c === 'USDC' ? 'USC' : c; };
@@ -1185,6 +1202,7 @@ td.c, th.c { text-align: center; }
         if (S.view === 'fx') await loadFx(); } catch (err) { toast(err.message, 'err'); }
       render(); return;
     }
+    if (e.target.closest('#themeBtn')) { const t = theme() === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; pref.set('theme', t); showTheme(); return; }
     const ub = e.target.closest('#userBtn'), menu = $('userMenu');
     if (ub) { menu.hidden = !menu.hidden; ub.setAttribute('aria-expanded', String(!menu.hidden)); return; }
     if (!e.target.closest('.user')) menu.hidden = true;
