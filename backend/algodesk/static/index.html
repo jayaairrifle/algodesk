@@ -316,6 +316,7 @@ td.c, th.c { text-align: center; }
 .login h1 { font-size: 22px; margin: 0; }
 .login .err { color: var(--down); font-size: 13px; min-height: 18px; }
 
+tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
 /* trading sessions */
 .g-sess1 { grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr); }
 .al-start { align-items: start; }
@@ -576,6 +577,15 @@ td.c, th.c { text-align: center; }
     const cur = viewCur(), x = conv(v), dec = cur === 'IDR' ? 0 : 2;
     return (x < 0 ? '−' : sign && x > 0 ? '+' : '') + Math.abs(x).toLocaleString(cur === 'IDR' ? 'id-ID' : 'en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   };
+  // An account-currency amount in a given currency (USD, USC or IDR), for the multi-currency P/L columns.
+  const fmtIn = (v, cur, sign) => {
+    const from = usdPer(acctCur()), to = usdPer(cur);
+    if (v == null || Number.isNaN(v) || !from || !to) return '–';
+    const x = v * from / to, dec = cur === 'IDR' ? 0 : 2;
+    return (x < 0 ? '−' : sign && x > 0 ? '+' : '') + Math.abs(x).toLocaleString(cur === 'IDR' ? 'id-ID' : 'en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  };
+  const PL_CURS = ['USC', 'USD', 'IDR'];
+  const plCells = (v, bold) => PL_CURS.map(c => `<td class="r num ${cls(v)}">${bold ? '<b>' : ''}${fmtIn(v, c, true)}${bold ? '</b>' : ''}</td>`).join('');
   const fmtMoney = (v, sign) => {
     if (v == null || Number.isNaN(v)) return '–';
     const cur = viewCur(), n = fmtNum(v, sign), s = /^[−+]/.test(n) ? n[0] : '', body = s ? n.slice(1) : n;
@@ -827,14 +837,17 @@ td.c, th.c { text-align: center; }
       return `<tr><td>${i + 1}</td><td><b>${esc(p.symbol)}</b></td><td><span class="side-b ${p.side === 'BUY' ? 'buy' : 'sell'}">${p.side}</span></td>
         <td class="r num">${Number(p.volume).toFixed(2)}</td><td class="r num">${fmtPx(p.price_open, d)}</td><td class="r num">${fmtPx(cur, d)}</td>
         ${compact ? '' : `<td class="r num">${p.sl ? fmtPx(p.sl, d) : '–'}</td><td class="r num">${p.tp ? fmtPx(p.tp, d) : '–'}</td>`}
-        <td class="r num ${cls(p.profit)}">${fmtNum(p.profit, true)}</td><td class="r num ${cls(move)}">${pct(move)}</td>
+        ${compact ? `<td class="r num ${cls(p.profit)}">${fmtNum(p.profit, true)}</td>` : plCells(p.profit)}<td class="r num ${cls(move)}">${pct(move)}</td>
         <td class="num">${dur(now - p.time)}</td><td class="num" title="${esc(eaLabel(p.magic))}">${p.magic || 'Manual'}</td><td><span class="bkt">${basketId(p.magic, p.symbol)}</span></td></tr>`; }).join('');
     return `<section class="card"><div class="ph"><h2>Open Positions (${ps.length}) <span class="chip g"><span class="dot g"></span>Real-Time</span></h2>
       ${compact ? `<button class="btn icon outline" data-go="positions" aria-label="Buka semua posisi">${icon('i-expand')}</button>` : ''}</div>
       <div class="tw"><table><thead><tr><th>#</th><th>Symbol</th><th>Type</th><th class="r">Volume</th><th class="r">Open Price</th><th class="r">Current Price</th>
-      ${compact ? '' : '<th class="r">SL</th><th class="r">TP</th>'}<th class="r">P/L (${viewCur()})</th><th class="r">P/L (%)</th><th>Duration</th><th>Magic</th><th>Basket</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="13" class="empty">Tidak ada posisi terbuka.</td></tr>`}</tbody></table></div>
-      ${compact ? '' : `<div class="pf">Posisi ditutup oleh EA masing-masing atau di MT5. Dashboard hanya bisa menghentikan entry baru per EA.</div>`}</section>`;
+      ${compact ? `<th class="r">P/L (${viewCur()})</th>` : `<th class="r">SL</th><th class="r">TP</th>${PL_CURS.map(c => `<th class="r">P/L (${c})</th>`).join('')}`}<th class="r">P/L (%)</th><th>Duration</th><th>Magic</th><th>Basket</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="15" class="empty">Tidak ada posisi terbuka.</td></tr>`}</tbody>
+      ${ps.length ? (() => { const pl = sum(ps, p => p.profit);
+        return `<tfoot><tr><td></td><td colspan="2"><b>Total</b></td><td class="r num"><b>${sum(ps, p => p.volume).toFixed(2)}</b></td><td></td><td></td>
+        ${compact ? `<td class="r num ${cls(pl)}"><b>${fmtNum(pl, true)}</b></td>` : `<td></td><td></td>${plCells(pl, true)}`}<td colspan="4"></td></tr></tfoot>`; })() : ''}</table></div>
+      ${compact ? '' : `<div class="pf">${idrRate() ? `Kurs 1 USD = ${idrRate().toLocaleString('id-ID', { maximumFractionDigits: 0 })} IDR (${idrSource()}); 1 USD = 100 USC. ` : 'IDR muncul setelah kurs USD/IDR tersedia. '}Posisi ditutup oleh EA masing-masing atau di MT5. Dashboard hanya bisa menghentikan entry baru per EA.</div>`}</section>`;
   }
   function basketCard(full) {
     const bs = baskets().filter(b => S.basketSym === 'ALL' || b.symbol === S.basketSym), syms = [...new Set(baskets().map(b => b.symbol))];
@@ -1094,9 +1107,10 @@ td.c, th.c { text-align: center; }
   function exposureCard() {
     const ps = tel()?.positions || [], by = {};
     ps.forEach(p => { const b = by[p.symbol] ||= { buy: 0, sell: 0, pl: 0, n: 0 }; b[p.side === 'BUY' ? 'buy' : 'sell'] += p.volume; b.pl += p.profit; b.n++; });
-    return `<section class="card"><div class="ph"><h2>Exposure per Symbol</h2></div><div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Posisi</th><th class="r">Buy lot</th><th class="r">Sell lot</th><th class="r">Net lot</th><th class="r">Floating</th></tr></thead><tbody>
-      ${Object.entries(by).map(([s, b]) => `<tr><td><b>${esc(s)}</b></td><td class="r num">${b.n}</td><td class="r num up">${b.buy.toFixed(2)}</td><td class="r num down">${b.sell.toFixed(2)}</td><td class="r num">${(b.buy - b.sell).toFixed(2)}</td><td class="r num ${cls(b.pl)}">${fmtNum(b.pl, true)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Tidak ada posisi terbuka.</td></tr>'}
-      </tbody></table></div></section>`;
+    return `<section class="card"><div class="ph"><h2>Exposure per Symbol</h2></div><div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Posisi</th><th class="r">Buy lot</th><th class="r">Sell lot</th><th class="r">Net lot</th>${PL_CURS.map(c => `<th class="r">Floating (${c})</th>`).join('')}</tr></thead><tbody>
+      ${Object.entries(by).map(([s, b]) => `<tr><td><b>${esc(s)}</b></td><td class="r num">${b.n}</td><td class="r num up">${b.buy.toFixed(2)}</td><td class="r num down">${b.sell.toFixed(2)}</td><td class="r num">${(b.buy - b.sell).toFixed(2)}</td>${plCells(b.pl)}</tr>`).join('') || '<tr><td colspan="8" class="empty">Tidak ada posisi terbuka.</td></tr>'}
+      </tbody>${ps.length ? (() => { const v = Object.values(by), buy = sum(v, b => b.buy), sell = sum(v, b => b.sell);
+        return `<tfoot><tr><td><b>Total</b></td><td class="r num"><b>${ps.length}</b></td><td class="r num up"><b>${buy.toFixed(2)}</b></td><td class="r num down"><b>${sell.toFixed(2)}</b></td><td class="r num"><b>${(buy - sell).toFixed(2)}</b></td>${plCells(sum(v, b => b.pl), true)}</tr></tfoot>`; })() : ''}</table></div></section>`;
   }
   function diagCard() {
     const t = tel(), a = S.st?.agent, term = t?.terminal || {}, age = ago(), secure = location.protocol === 'https:';
