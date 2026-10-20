@@ -139,6 +139,13 @@ main { padding: 18px 20px 24px; min-width: 0; display: flex; flex-direction: col
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
 .seg button { background: none; border: 0; padding: 6px 13px; cursor: pointer; color: var(--fg-2); font-size: 12.5px; border-right: 1px solid var(--line); }
 .seg button:last-child { border-right: 0; }
+.fxchip { background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.fxbig { font-family: var(--mono); font-size: 34px; font-weight: 600; line-height: 1.1; }
+.fxstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; padding: 0 16px 14px; }
+.fxstats small { display: block; color: var(--fg-2); font-size: 12px; }
+.fxcard { display: flex; flex-direction: column; }
+.fxchart { flex: 1; min-height: 160px; padding: 0 16px 16px; }
+.fxchart svg { width: 100%; height: 100%; display: block; }
 .seg.scroll { max-width: 100%; overflow-x: auto; }
 .seg.scroll button { flex: none; }
 .seg button.on { background: var(--accent-bg); color: var(--fg); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -414,6 +421,7 @@ td.c, th.c { text-align: center; }
       <button class="nav" data-view="risk"><svg><use href="#i-shield"/></svg>Risk Center</button>
       <button class="nav" data-view="analytics"><svg><use href="#i-perf"/></svg>Strategy Analytics</button>
       <button class="nav" data-view="market"><svg><use href="#i-candle"/></svg>Market Watch</button>
+      <button class="nav" data-view="fx"><svg><use href="#i-coin"/></svg>Kurs USD</button>
       <button class="nav" data-view="diag"><svg><use href="#i-pulse"/></svg>Broker Diagnostics</button>
       <button class="nav" data-view="users" id="navUsers"><svg><use href="#i-users"/></svg>Pengguna &amp; RBAC</button>
       <button class="nav" data-view="settings"><svg><use href="#i-gear"/></svg>Settings</button>
@@ -614,6 +622,7 @@ td.c, th.c { text-align: center; }
     $('tbAcct').innerHTML = a ? `<div class="m"><small class="ttl">Account (${esc(viewCur())})</small><select id="curSel" aria-label="Mata uang tampilan">${CURS.map(c => `<option value="${c}" ${c === viewCur() ? 'selected' : ''} ${usdPer(c) && usdPer(acctCur()) ? '' : 'disabled'}>${c}${c === 'IDR' && !idrRate() ? ' (atur kurs)' : ''}</option>`).join('')}</select></div>`
       + m('Balance', fmtNum(a.balance)) + m('Equity', fmtNum(a.equity)) + m('Free Margin', fmtNum(a.free_margin)) + m('Margin', fmtNum(a.margin))
       + m('Margin Level', a.margin_level ? a.margin_level.toFixed(2) + '%' : '–', a.margin_level && a.margin_level < 200 ? 'down' : 'up')
+      + (idrRate() ? `<button class="m fxchip" data-go="fx" aria-label="Buka Kurs USD"><small>USD/IDR${!brokerIdr() && S.fx?.live ? ' · live' : ''}</small><b>${idrRate().toLocaleString('id-ID', { maximumFractionDigits: 0 })}</b></button>` : '')
       : `<span class="muted">Menunggu data akun dari agent…</span>`;
     $('navPos').textContent = t?.positions?.length ?? 0;
     $('navBkt').textContent = t ? baskets().length : 0;
@@ -980,6 +989,37 @@ td.c, th.c { text-align: center; }
         <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit">Tambah pengguna</button></div>
       </form></section>`;
   }
+  // ---------- USD/IDR ----------
+  function fxView() {
+    const rate = idrRate(), hist = (S.fx?.history || []).map(p => p[1]), first = hist[0], a = tel()?.account;
+    const ch = first && rate ? (rate - first) / first * 100 : null;
+    const src = brokerIdr() ? 'Simbol USDIDR broker' : apiIdr() ? S.fx.source : manualIdr() ? 'Kurs manual (Settings)' : '–';
+    const live = brokerIdr() || (apiIdr() && S.fx.live);
+    const upd = !brokerIdr() && apiIdr() && S.fx.updated ? new Date(S.fx.updated * 1000).toLocaleTimeString('id-ID') : null;
+    const rp = v => v == null ? '–' : 'Rp ' + v.toLocaleString('id-ID', { maximumFractionDigits: 0 });
+    const usd = v => v == null ? '–' : (v < 0 ? '−' : '') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const toUsd = v => v == null || !usdPer(acctCur()) ? null : v * usdPer(acctCur());
+    const pl = tel()?.pl;
+    const rows = a ? [['Balance', a.balance], ['Equity', a.equity], ['Free Margin', a.free_margin], ['Margin', a.margin],
+      ['Floating P/L', pl?.floating ?? a.equity - a.balance], ['P/L hari ini', pl ? pl.realized + pl.floating : null]] : [];
+    const rateCard = `<section class="card fxcard"><div class="ph"><h2>1 USD dalam Rupiah</h2>${live ? '<span class="chip g"><span class="dot g"></span>Live</span>' : rate ? '<span class="chip y">Harian</span>' : ''}</div>
+      <div style="padding:0 16px 12px"><div class="fxbig">${rate ? rp(rate) : '–'}</div>
+        <div class="muted" style="margin-top:4px">${ch == null ? '' : `<span class="${cls(ch)}">${pct(ch)}</span> dalam 24 jam · `}Sumber: ${esc(src)}${upd ? ' · diperbarui ' + upd : ''}</div></div>
+      <div class="fxstats"><div><small>Tertinggi 24 jam</small><b class="num">${hist.length ? rp(Math.max(...hist)) : '–'}</b></div><div><small>Terendah 24 jam</small><b class="num">${hist.length ? rp(Math.min(...hist)) : '–'}</b></div>
+        <div><small>1.000 IDR</small><b class="num">${rate ? usd(1000 / rate) : '–'}</b></div><div><small>1 USC (sen)</small><b class="num">${rate ? rp(rate / 100) : '–'}</b></div></div>
+      <div class="fxchart">${hist.length > 1 ? spark(hist, ch < 0 ? 'var(--down)' : 'var(--up)', 600, 150) : '<div class="empty">Grafik 24 jam terisi seiring kurs diambil tiap menit.</div>'}</div>
+      ${S.fx?.live === false && apiIdr() && !brokerIdr() ? '<div class="pf">Sumber live (Indodax) sedang tidak terjangkau, memakai kurs harian.</div>' : ''}</section>`;
+    const posCard = `<section class="card"><div class="ph"><h2>Posisi akun dalam USD</h2><span class="muted">Akun dalam ${esc(acctCur())}</span></div>
+      <div class="tw"><table><thead><tr><th></th>${acctCur() === 'USD' ? '' : `<th class="r">${esc(acctCur())}</th>`}<th class="r">USD</th><th class="r">IDR</th></tr></thead><tbody>
+      ${rows.map(([l, v]) => { const u = toUsd(v); return `<tr><td>${l}</td>${acctCur() === 'USD' ? '' : `<td class="r num">${v == null ? '–' : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>`}
+        <td class="r num ${l.includes('P/L') ? cls(u) : ''}">${usd(u)}</td><td class="r num ${l.includes('P/L') ? cls(u) : ''}">${u == null || !rate ? '–' : (u < 0 ? '−' : '') + rp(Math.abs(u * rate))}</td></tr>`; }).join('') || '<tr><td colspan="4" class="empty">Menunggu data akun dari agent…</td></tr>'}
+      </tbody></table></div></section>`;
+    const calc = `<section class="card"><div class="ph"><h2>Kalkulator</h2></div><form class="fgrid" id="fxCalc" onsubmit="return false">
+      <label>USD<input id="fxUsd" type="number" step="any" value="${S.fxUsd ?? 100}" inputmode="decimal"></label>
+      <label>IDR<input id="fxIdr" type="number" step="any" value="${rate ? Math.round((S.fxUsd ?? 100) * rate) : ''}" inputmode="decimal"></label></form></section>`;
+    return `<div class="grid g-ov2">${rateCard}<div class="grid">${posCard}${calc}</div></div>`;
+  }
+
   function settingsView() {
     const p = tel()?.protection;
     return `<section class="card"><div class="ph"><h2>Batas rugi harian</h2><span class="muted">Menaikkan batas tidak mencabut blokir yang sudah terjadi hari ini.</span></div>
@@ -1014,6 +1054,7 @@ td.c, th.c { text-align: center; }
     risk: ['Risk Center', 'Proteksi rugi harian, margin, dan eksposur.'],
     analytics: ['Strategy Analytics', 'Perbandingan EA dan perkembangan equity.'],
     market: ['Market Watch', 'Harga, struktur pasar, RSI/ATR, dan sinyal untuk simbol di Market Watch terminal.'],
+    fx: ['Kurs USD', 'Harga 1 USD dalam rupiah secara realtime, dan posisi akun dalam USD dan IDR.'],
     diag: ['Broker Diagnostics', 'Kondisi agent, terminal, koneksi broker, dan spread.'],
     users: ['Pengguna & RBAC', 'Siapa yang bisa melihat dan siapa yang bisa mengirim perintah ke agent.'],
     settings: ['Settings', 'Batas rugi harian, mata uang tampilan, dan log perintah.'],
@@ -1025,7 +1066,7 @@ td.c, th.c { text-align: center; }
     return S.view === 'overview' ? '' : `<div class="phead"><div><h1>${h}</h1><p>${p}</p></div>${acts}</div>`;
   }
   function viewBody() {
-    if (!tel() && !['users', 'settings'].includes(S.view)) return emptyState();
+    if (!tel() && !['users', 'settings', 'fx'].includes(S.view)) return emptyState();
     switch (S.view) {
       case 'overview': return filterBar() + kpiRow()
         + `<div class="grid g-ov1">${equityCard()}${dailyCard()}${symPerfCard()}</div>`
@@ -1038,6 +1079,7 @@ td.c, th.c { text-align: center; }
       case 'risk': return riskCard() + `<div class="grid g-2">${protControl()}${exposureCard()}</div>`;
       case 'analytics': return filterBar() + kpiRow() + `<div class="grid g-2">${equityCard()}${dailyCard()}</div>` + perfSummary() + `<div class="grid g-2">${symPerfCard()}${allocCard()}</div>`;
       case 'market': return marketCard();
+      case 'fx': return fxView();
       case 'diag': return diagCard();
       case 'users': return usersView();
       case 'settings': return settingsView();
@@ -1065,7 +1107,7 @@ td.c, th.c { text-align: center; }
   }
   const loadEquity = async () => { S.eq = (await api('/equity?hours=' + Math.min(192, S.days * 24))).samples; };
   const loadCmds = async () => { S.cmds = (await api('/commands?limit=100')).commands; };
-  const loadFx = async () => { S.fx = await api('/fx'); };
+  const loadFx = async () => { S.fx = await api('/fx' + (S.view === 'fx' ? '?history=1' : '')); S.fxAt = Date.now(); };
   const loadUsers = async () => { if (can('admin')) S.users = (await api('/users')).users; };
   async function loadStats() {
     const [day, per, tr, dl] = await Promise.all([
@@ -1079,7 +1121,7 @@ td.c, th.c { text-align: center; }
     every(2000, async () => { await loadState(); safeRender(); });
     every(15000, async () => { await loadStats(); safeRender(); });
     every(30000, async () => { await loadEquity(); safeRender(); });
-    every(15000, async () => { if (!S.fx?.usd_idr || Date.now() - S.fxAt > 300000) { await loadFx(); S.fxAt = Date.now(); safeRender(); } });
+    every(15000, async () => { if (!S.fx?.usd_idr || S.view === 'fx' || Date.now() - S.fxAt > 60000) { await loadFx(); safeRender(); } });
     every(5000, async () => { if (['settings', 'eas'].includes(S.view)) { await loadCmds(); safeRender(); } });
     S.timers.push(setInterval(() => { tickClock(); const a = $('telAgo'), g = ago(); if (a && g != null) a.textContent = Math.round(g) + ' detik lalu'; }, 1000));
     tickClock();
@@ -1139,7 +1181,8 @@ td.c, th.c { text-align: center; }
     if (nav) {
       S.view = nav.dataset.view || nav.dataset.go; S.confirm = false; S.edit = null; window.scrollTo(0, 0);
       try { if (S.view === 'settings' || S.view === 'eas') await loadCmds(); if (S.view === 'users') await loadUsers();
-        if (S.view === 'history') S.histTrades = (await api('/trades?days=' + S.histDays)).trades; } catch (err) { toast(err.message, 'err'); }
+        if (S.view === 'history') S.histTrades = (await api('/trades?days=' + S.histDays)).trades;
+        if (S.view === 'fx') await loadFx(); } catch (err) { toast(err.message, 'err'); }
       render(); return;
     }
     const ub = e.target.closest('#userBtn'), menu = $('userMenu');
@@ -1191,6 +1234,13 @@ td.c, th.c { text-align: center; }
     el.blur(); render();
   });
   document.addEventListener('input', e => {
+    if (e.target.id === 'fxUsd' || e.target.id === 'fxIdr') {  // update the other field in place; a render would steal focus
+      const r = idrRate(), v = parseFloat(e.target.value);
+      if (!r) return;
+      if (e.target.id === 'fxUsd') { S.fxUsd = v; $('fxIdr').value = Number.isFinite(v) ? Math.round(v * r) : ''; }
+      else { S.fxUsd = v / r; $('fxUsd').value = Number.isFinite(v) ? (v / r).toFixed(2) : ''; }
+      return;
+    }
     if (e.target.id !== 'hQ') return;
     S.histQ = e.target.value; const pos = e.target.selectionStart; render();
     const q = $('hQ'); if (q) { q.focus(); q.setSelectionRange(pos, pos); }
