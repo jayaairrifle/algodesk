@@ -22,7 +22,8 @@ enum ENUM_AD_ENTRY
    AD_ENTRY_LIMIT,        // daily loss limit reached
    AD_ENTRY_PAUSED,       // manual pause from dashboard
    AD_ENTRY_MAGIC_OFF,    // this magic number disabled from dashboard
-   AD_ENTRY_NO_BASELINE   // agent not running / no baseline today (fail-closed only)
+   AD_ENTRY_NO_BASELINE,  // agent not running / no baseline today (fail-closed only)
+   AD_ENTRY_SESSION       // outside the trading sessions allowed from the dashboard
   };
 
 //--- Global Variable names are scoped per account login
@@ -82,6 +83,8 @@ ENUM_AD_ENTRY AlgoDesk_Check(const long magic)
       return AD_ENTRY_PAUSED;
    if(magic != 0 && AD_Get(AD_MagicKey(magic), 0.0) > 0.5)
       return AD_ENTRY_MAGIC_OFF;
+   if(AD_Get("SESS", 0.0) > 0.5)
+      return AD_ENTRY_SESSION;
    return AD_ENTRY_OK;
   }
 
@@ -99,6 +102,7 @@ string AlgoDesk_ReasonText(const ENUM_AD_ENTRY r)
       case AD_ENTRY_PAUSED:      return "entry dijeda dari dashboard";
       case AD_ENTRY_MAGIC_OFF:   return "magic number dinonaktifkan dari dashboard";
       case AD_ENTRY_NO_BASELINE: return "agent belum menetapkan baseline hari ini";
+      case AD_ENTRY_SESSION:     return "di luar sesi trading yang diizinkan";
      }
    return "tidak diketahui";
   }

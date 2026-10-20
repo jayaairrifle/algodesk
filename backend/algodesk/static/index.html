@@ -316,6 +316,57 @@ td.c, th.c { text-align: center; }
 .login h1 { font-size: 22px; margin: 0; }
 .login .err { color: var(--down); font-size: 13px; min-height: 18px; }
 
+/* trading sessions */
+.g-sess1 { grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr); }
+.al-start { align-items: start; }
+.clkrow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.clk { padding: 14px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; border-width: 1.5px; }
+.clk > small:first-child { color: var(--fg); font-size: 14px; }
+.clk b { font-size: 26px; font-weight: 600; letter-spacing: .5px; }
+.clk small { color: var(--fg-2); font-size: 12.5px; }
+.clk > span { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.clk > span svg { width: 14px; height: 14px; }
+.clk.on { border-color: var(--up); background: color-mix(in srgb, var(--up) 7%, var(--panel)); }
+.clk.off { border-color: var(--down); background: color-mix(in srgb, var(--down) 7%, var(--panel)); }
+.srows { display: flex; flex-direction: column; padding: 0 16px 10px; }
+.srows > div { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.srows > div:last-child { border-bottom: 0; }
+.srows > div > span:first-child { display: inline-flex; align-items: center; gap: 8px; }
+.srows b { font-weight: 500; }
+.srows.tight { padding: 4px 0 0; }
+.srows.tight > div { grid-template-columns: minmax(0, 1fr) auto auto; }
+.tl { --lw: 104px; padding: 4px 16px 14px; }
+.tl .axis { position: relative; height: 18px; margin-left: var(--lw); font-size: 11px; color: var(--muted); }
+.tl .axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.tl .axis span:first-child { transform: none; } .tl .axis span:last-child { transform: translateX(-100%); }
+.tl .lanes { position: relative; }
+.tl .lane { display: flex; align-items: center; height: 30px; }
+.tl .lane > span { width: var(--lw); flex: none; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--fg-2); }
+.tl .track { position: relative; flex: 1; height: 22px; background: var(--panel-2); border-radius: 4px; }
+.tl .track i { position: absolute; top: 0; bottom: 0; border-radius: 4px; color: #fff; font-style: normal; font-size: 11px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; opacity: .9; }
+.tl .now { position: absolute; top: -4px; bottom: -4px; left: calc(var(--lw) + (100% - var(--lw)) * var(--p)); border-left: 2px dashed var(--fg); }
+.legend { display: flex; gap: 14px; padding: 0 16px; font-size: 12.5px; color: var(--fg-2); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.sbars { width: 100%; height: auto; display: block; padding: 6px 12px 10px; }
+.sbars text { fill: var(--fg-2); font-size: 12px; }
+.sbars .gl { stroke: var(--line-soft); } .sbars .zero { stroke: var(--muted); }
+.donut { display: flex; align-items: center; gap: 22px; padding: 6px 16px 16px; flex-wrap: wrap; }
+.donut svg { width: 170px; height: 170px; flex: none; }
+.donut text { fill: var(--fg-2); font-size: 12px; } .donut text.big { fill: var(--fg); font-size: 24px; font-weight: 600; }
+.donut .dl { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 180px; font-size: 13px; }
+.donut .dl div { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; }
+.sbody { display: flex; flex-direction: column; gap: 14px; padding: 0 16px 16px; }
+.sbody .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.sfilter { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+.sfilter span { display: flex; flex-direction: column; gap: 2px; }
+.sw.sm { width: 46px; height: 24px; padding: 0; }
+.sw.sm::after { top: 3px; left: 3px; width: 18px; height: 18px; }
+.sw.sm.on::after { left: 25px; }
+.sform { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.sform label span { display: flex; gap: 6px; align-items: center; }
+.sform input { flex: 1; min-width: 0; }
+.phead .acts select { min-width: 130px; }
+
 @media (max-width: 1500px) {
   .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .g-ov1 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -323,7 +374,7 @@ td.c, th.c { text-align: center; }
   .tb-brand { width: auto; }
 }
 @media (max-width: 1180px) {
-  .g-ov1, .g-ov2, .g-ea2, .g-2 { grid-template-columns: minmax(0, 1fr); }
+  .g-ov1, .g-ov2, .g-ea2, .g-2, .g-sess1 { grid-template-columns: minmax(0, 1fr); }
   .top { flex-wrap: wrap; }
   .top > div { border-bottom: 1px solid var(--line); }
   .tb-acct { order: 5; flex-basis: 100%; }
@@ -339,6 +390,10 @@ td.c, th.c { text-align: center; }
   .bgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .rmini { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .rgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .clkrow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .clk b { font-size: 21px; }
+  .tl { --lw: 76px; }
+  .tl .axis span:not(:nth-child(3n+1)) { display: none; }
   .top > div { padding: 10px 16px; }
   .tb-brand small { max-width: 200px; }
   .fbar .live { margin-left: 0; }
@@ -441,6 +496,7 @@ td.c, th.c { text-align: center; }
       <button class="nav" data-view="risk"><svg><use href="#i-shield"/></svg>Risk Center</button>
       <button class="nav" data-view="analytics"><svg><use href="#i-perf"/></svg>Strategy Analytics</button>
       <button class="nav" data-view="market"><svg><use href="#i-candle"/></svg>Market Watch</button>
+      <button class="nav" data-view="session"><svg><use href="#i-clock"/></svg>Trading Session</button>
       <button class="nav" data-view="fx"><svg><use href="#i-coin"/></svg>Kurs USD</button>
       <button class="nav" data-view="diag"><svg><use href="#i-pulse"/></svg>Broker Diagnostics</button>
       <button class="nav" data-view="users" id="navUsers"><svg><use href="#i-users"/></svg>Pengguna &amp; RBAC</button>
@@ -458,7 +514,8 @@ td.c, th.c { text-align: center; }
 <script>
 (() => {
   const ROLE_LABEL = { admin: 'Super Admin', trader: 'Trader', viewer: 'Viewer' };
-  const CMD_LABEL = { pause_entry: 'Jeda entry', resume_entry: 'Lanjutkan entry', disable_magic: 'Nonaktifkan EA', enable_magic: 'Aktifkan EA', set_limit: 'Ubah batas rugi' };
+  const CMD_LABEL = { pause_entry: 'Jeda entry', resume_entry: 'Lanjutkan entry', disable_magic: 'Nonaktifkan EA', enable_magic: 'Aktifkan EA', set_limit: 'Ubah batas rugi',
+    risk_set: 'Ubah proteksi rugi', risk_reset: 'Buka blokir', session_set: 'Ubah filter sesi', sr_set: 'Ubah StopReverse', sr_close: 'Tutup StopReverse' };
   const STATUS_LABEL = { pending: 'Menunggu agent', acked: 'Dikonfirmasi agent', failed: 'Ditolak agent', expired: 'Kedaluwarsa' };
   const PERIODS = { 1: 'Hari ini', 7: '7 Hari', 30: '30 Hari' };
   const S = {
@@ -468,6 +525,7 @@ td.c, th.c { text-align: center; }
     statsDay: [], perfTab: 'day', statsPer: [], perStart: null, deals: [], dealsStart: null,
     logEa: '', logSym: '', logEv: '', histSym: 'ALL', histQ: '', histDays: 7, histTrades: [], basketSym: 'ALL',
     edit: null, detail: null, detailTrades: [],
+    tickAt: {}, sessDays: 7, sessSym: 'ALL', sessTrades: [], sessStart: null, sessStamp: 0, sessEdit: false, sessDist: 'count',
   };
 
   // ---------- helpers ----------
@@ -500,6 +558,7 @@ td.c, th.c { text-align: center; }
   const theme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
   const showTheme = () => { const b = $('themeBtn'); if (b) b.setAttribute('aria-checked', String(theme() === 'light')); };
   showTheme();
+  S.sessTz = pref.get('sessTz');
   const CURS = ['USD', 'USC', 'IDR'];
   S.cur = pref.get('cur');
   const normCur = c => { c = String(c || 'USD').toUpperCase(); return c.startsWith('USC') || c === 'USDC' ? 'USC' : c; };
@@ -813,15 +872,16 @@ td.c, th.c { text-align: center; }
   function riskCard() {
     const t = tel(), a = t.account, p = t.protection || {}, pl = t.pl;
     const daily = pl ? pl.realized + pl.floating : p.baseline ? a.equity - p.baseline : null;
-    const used = p.limit_pct && p.baseline ? Math.max(0, -Math.min(0, daily ?? 0)) / p.baseline * 100 : 0;
+    // the drawdown the agent enforces: baseline minus current equity
+    const used = p.baseline ? (p.loss_used ?? Math.max(0, -Math.min(0, daily ?? 0))) / p.baseline * 100 : 0;
     const exposure = sum(t.positions || [], x => x.volume), floating = sum(t.positions || [], x => x.profit);
     const ml = a.margin_level, mlState = !ml ? ['–', ''] : ml < (a.margin_call || 100) * 1.5 ? ['Danger', 'r'] : ml < 300 ? ['Watch', 'y'] : ['Safe', 'g'];
     return `<section class="card"><div class="ph"><h2>Risk Center</h2><span class="muted" style="font-size:12.5px">Daily Baseline (${p.day_start ? srvDay(p.day_start) : '–'})</span>
-      <span class="chip ${p.entry_state === 'blocked' ? 'r' : p.entry_state === 'paused' ? 'y' : 'g'}">${p.entry_state === 'blocked' ? 'Blocked' : p.entry_state === 'paused' ? 'Paused' : 'Valid'}</span></div>
+      <span class="chip ${p.entry_state === 'blocked' ? 'r' : ['paused', 'session'].includes(p.entry_state) ? 'y' : 'g'}">${{ blocked: 'Blocked', paused: 'Paused', session: 'Di luar sesi' }[p.entry_state] || 'Valid'}</span></div>
       <div class="rgrid"><div><small>Baseline Equity</small><b>${fmtNum(p.baseline)}</b></div><div><small>Current Equity</small><b>${fmtNum(a.equity)}</b></div>
         <div><small>Daily P/L</small><b class="${cls(daily)}">${fmtNum(daily, true)}</b> <span class="num ${cls(daily)}" style="font-size:12px">(${p.baseline ? pct(daily / p.baseline * 100) : '–'})</span></div></div>
       <div style="padding:0 16px 12px"><div class="bar ${used >= (p.limit_pct || 3) ? 'crit' : used >= (p.limit_pct || 3) * .66 ? 'warn' : ''}"><i style="width:${Math.min(100, used / (p.limit_pct || 3) * 100).toFixed(1)}%"></i></div>
-        <div class="prow" style="margin-top:6px"><span>Daily Drawdown ${used.toFixed(2)}%</span><span>Limit: ${p.limit_pct == null ? '–' : p.limit_pct.toFixed(2) + '%'} (${fmtNum(p.limit_amount)})</span></div></div>
+        <div class="prow" style="margin-top:6px"><span>Daily Drawdown ${used.toFixed(2)}%</span><span>Limit: ${p.enabled === false ? 'proteksi mati' : p.limit_pct == null ? '–' : p.limit_pct.toFixed(2) + '% (' + fmtNum(p.limit_amount) + ')'}</span></div></div>
       <div class="rmini"><div><small>Margin Level</small><b class="${mlState[1] === 'g' ? 'up' : mlState[1] === 'r' ? 'down' : 'warn'}">${ml ? ml.toFixed(2) + '%' : '–'}</b> <span class="chip ${mlState[1]}" style="font-size:11px;padding:1px 6px">${mlState[0]}</span></div>
         <div><small>Total Exposure</small><b>${exposure.toFixed(2)} lot</b></div><div><small>Floating P/L</small><b class="${cls(floating)}">${fmtNum(floating, true)}</b></div>
         <div><small>Sisa batas harian</small><b>${fmtNum(Math.max(0, (p.limit_amount || 0) - (p.loss_used || 0)))}</b></div>
@@ -995,14 +1055,41 @@ td.c, th.c { text-align: center; }
     const p = tel()?.protection || {}, st = p.entry_state, online = S.st?.agent?.online;
     let action;
     if (S.pending) action = `<button class="btn" disabled>${icon('i-sync')}Menunggu konfirmasi agent…</button>`;
+    else if (S.confirm === 'unblock') action = `<div class="confirm"><span>Buka blokir entry hari ini? Jika rugi masih melewati batas, <b>rugi hari ini dihitung ulang dari equity sekarang</b>.</span>
+        <div><button class="btn" data-act="cancel">Batal</button><button class="btn primary" data-act="unblockgo">Buka blokir</button></div></div>`;
     else if (S.confirm) action = `<div class="confirm"><span>${st === 'paused' ? 'Kirim perintah <b>lanjutkan entry</b> ke agent?' : 'Kirim perintah <b>jeda entry</b> ke semua EA di terminal ini? Posisi terbuka tidak ditutup.'}</span>
         <div><button class="btn" data-act="cancel">Batal</button><button class="btn primary" data-act="send">Kirim perintah</button></div></div>`;
-    else if (st === 'blocked') action = `<button class="btn" disabled>${icon('i-lock')}Diblokir sampai reset harian</button>`;
+    else if (st === 'blocked') action = can('admin') && p.enabled !== undefined
+      ? `<button class="btn green" data-act="unblock" ${online ? '' : 'disabled'}>${icon('i-lock')}Buka blokir hari ini</button>`
+      : `<button class="btn" disabled>${icon('i-lock')}Diblokir sampai reset harian</button>`;
     else action = `<button class="btn ${st === 'paused' ? 'green' : 'red'}" data-act="pause" ${can('control') && online ? '' : 'disabled'}>${icon(st === 'paused' ? 'i-play' : 'i-pause')}${st === 'paused' ? 'Lanjutkan entry semua EA' : 'Jeda entry semua EA'}</button>`;
     return `<section class="card"><div class="ph"><h2>Proteksi harian</h2></div><div class="prot">
-      <div class="state">${st === 'allowed' ? '<span class="dot g"></span>Entry baru diizinkan' : st === 'paused' ? '<span class="dot y"></span><span class="warn">Entry dijeda manual</span>' : st === 'blocked' ? '<span class="dot r"></span><span class="down">Batas tercapai, entry baru diblokir</span>' : '<span class="dot m"></span>Status belum diketahui'}</div>
-      <div class="muted">Saat rugi hari ini mencapai batas, agent memblokir entry baru semua EA. Posisi aktif tetap mengikuti SL/TP masing-masing EA.</div>
+      <div class="state">${st === 'allowed' ? '<span class="dot g"></span>Entry baru diizinkan' : st === 'paused' ? '<span class="dot y"></span><span class="warn">Entry dijeda manual</span>' : st === 'blocked' ? '<span class="dot r"></span><span class="down">Batas tercapai, entry baru diblokir</span>' : st === 'session' ? '<span class="dot y"></span><span class="warn">Di luar sesi trading yang diizinkan, entry baru ditahan</span>' : '<span class="dot m"></span>Status belum diketahui'}</div>
+      <div class="muted">${p.enabled === false ? 'Proteksi rugi harian sedang dimatikan dari Pengaturan batas rugi.' : 'Saat rugi hari ini mencapai batas, agent memblokir entry baru semua EA.'} Posisi aktif tetap mengikuti SL/TP masing-masing EA.</div>
       ${action}<div class="center">${!can('control') ? 'Peran Viewer tidak dapat mengirim perintah.' : !online ? 'Agent offline.' : 'Perintah dikirim lewat backend terautentikasi.'}</div></div></section>`;
+  }
+  // Daily-loss settings, kept by the agent (0.16+) so they hold without the backend. Older agents only take a percentage.
+  function riskSettings() {
+    const p = tel()?.protection || {}, v016 = p.enabled !== undefined, adm = can('admin') && S.st?.agent?.online && !S.pending;
+    const on = p.enabled !== false, cur = p.limit_mode || 'pct', mode = v016 ? S.riskMode || cur : 'pct';
+    const val = mode === cur ? (p.limit_value ?? p.limit_pct ?? 3) : '', base = p.baseline;
+    const preview = !on ? 'Proteksi mati: agent tidak memblokir entry karena rugi harian.'
+      : cur === 'pct' ? `Batas sekarang ${p.limit_pct?.toFixed(2) ?? '–'}% dari baseline ${fmtNum(base)} = ${fmtMoney(p.limit_amount)} per hari.`
+      : `Batas sekarang ${fmtMoney(p.limit_amount)} per hari = ${p.limit_pct?.toFixed(2) ?? '–'}% dari baseline ${fmtNum(base)}.`;
+    return `<section class="card"><div class="ph"><div><h2>Pengaturan batas rugi <span class="chip ${on ? 'g' : ''}">${on ? 'ON' : 'OFF'}</span></h2>
+        <p>Disimpan di agent MT5, tetap berlaku walau backend terputus.</p></div>
+        ${v016 ? `<button class="sw ${on ? 'on' : ''}" data-risk="toggle" aria-label="${on ? 'Matikan' : 'Nyalakan'} proteksi rugi harian" ${adm ? '' : 'disabled'}>${on ? 'ON' : 'OFF'}</button>` : ''}</div>
+      <form id="riskForm" class="fgrid">
+        <label>Jenis batas<select id="riskMode" ${adm && v016 ? '' : 'disabled'}>
+          <option value="pct" ${mode === 'pct' ? 'selected' : ''}>Persen dari equity awal hari</option>
+          <option value="amount" ${mode === 'amount' ? 'selected' : ''}>Nominal tetap (${esc(acctCur())})</option></select></label>
+        <label>${mode === 'pct' ? 'Batas rugi harian (%)' : `Batas rugi harian (${esc(acctCur())})`}
+          <input id="riskVal" type="number" ${mode === 'pct' ? 'min="0.5" max="20" step="0.1"' : 'min="0.01" step="0.01"'} value="${val}" required ${adm ? '' : 'disabled'}></label>
+        <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${adm ? '' : 'disabled'}>Simpan ke agent</button></div>
+      </form>
+      <div class="pf">${preview} Menaikkan batas mencabut blokir hari ini bila rugi sudah di bawah batas baru.
+        ${p.close_all_on_limit ? ' Saat batas tercapai agent juga menutup semua posisi.' : ''}
+        ${!can('admin') ? '<br>Hanya Super Admin yang dapat mengubah batas.' : !v016 ? '<br>Perbarui agent ke 0.16 untuk menyalakan/mematikan proteksi dan memakai batas nominal.' : ''}</div></section>`;
   }
   function exposureCard() {
     const ps = tel()?.positions || [], by = {};
@@ -1076,13 +1163,202 @@ td.c, th.c { text-align: center; }
     return `<div class="grid g-ov2">${rateCard}<div class="grid">${posCard}${calc}</div></div>`;
   }
 
+  // ---------- trading sessions ----------
+  // Session hours are kept in each city's own local time, as the agent's session filter (0.16+) uses them,
+  // and shown in the time zone the viewer picks. Each trade belongs to one session by its opening time:
+  // Overlap (London and New York both open) first, then London, New York, Asia, else "Di luar sesi".
+  const SESS = [
+    { k: 'asia', name: 'Asia', tz: 'Asia/Tokyo', city: 'Tokyo', def: '09:00-18:00', color: '#f5a524' },
+    { k: 'london', name: 'London', tz: 'Europe/London', city: 'London', def: '08:00-17:00', color: '#2f7cf6' },
+    { k: 'newyork', name: 'New York', tz: 'America/New_York', city: 'New York', def: '08:00-17:00', color: '#f04452' },
+    { k: 'overlap', name: 'Overlap', sub: 'London & New York', color: '#22c55e' },
+  ];
+  const SESS_OFF = { k: 'off', name: 'Di luar sesi', color: '#6f829e' };
+  const SESS_BY = Object.fromEntries([...SESS, SESS_OFF].map(x => [x.k, x]));
+  const SESS_TZS = [['Asia/Jakarta', 'Jakarta (WIB)'], ['UTC', 'UTC'], ['Asia/Tokyo', 'Tokyo (JST)'], ['Europe/London', 'London'], ['America/New_York', 'New York']];
+  const SERIES = ['#3b82f6', '#f5a524', '#14b8a6'];
+  const tzFmt = {};
+  const tzParts = (tz, ms) => {
+    const f = tzFmt[tz] ||= new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', weekday: 'short' });
+    const o = {}; f.formatToParts(ms).forEach(x => { if (x.type !== 'literal') o[x.type] = x.type === 'weekday' ? x.value : +x.value; }); return o;
+  };
+  const tzOffset = (tz, ms) => { const p = tzParts(tz, ms); return Math.round((Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute) - Math.floor(ms / 60000) * 60000) / 60000); };
+  // epoch ms of a wall-clock time in tz; d may run past the month's end (Date.UTC normalises it)
+  const wallToUtc = (tz, y, m, d, min) => { const g = Date.UTC(y, m - 1, d) + min * 60000; return g - tzOffset(tz, g - tzOffset(tz, g) * 60000) * 60000; };
+  const hm = r => r.split('-').map(x => +x.slice(0, 2) * 60 + +x.slice(3, 5));
+  const sessHours = k => tel()?.sessions?.[k + '_hours'] || SESS_BY[k].def;
+  // open intervals [from, to) in epoch ms of session k that touch [a, b)
+  function sessWindows(k, a, b) {
+    if (k === 'overlap') {
+      const N = sessWindows('newyork', a, b), out = [];
+      sessWindows('london', a, b).forEach(x => N.forEach(y => { const f = Math.max(x[0], y[0]), t = Math.min(x[1], y[1]); if (f < t) out.push([f, t]); }));
+      return out;
+    }
+    const { tz } = SESS_BY[k], [s, e] = hm(sessHours(k)), p = tzParts(tz, a), out = [];
+    for (let i = -1; i <= Math.ceil((b - a) / 864e5) + 1; i++) {
+      const from = wallToUtc(tz, p.year, p.month, p.day + i, s), to = wallToUtc(tz, p.year, p.month, p.day + i + (e > s ? 0 : 1), e);
+      if (to > a && from < b) out.push([from, to]);
+    }
+    return out;
+  }
+  // classifier for times in [a, b): the sessions open at ms, and the one session a trade at ms belongs to
+  function sessClassifier(a, b) {
+    const W = Object.fromEntries(SESS.map(x => [x.k, sessWindows(x.k, a, b)]));
+    const open = ms => SESS.filter(x => W[x.k].some(w => w[0] <= ms && ms < w[1])).map(x => x.k);
+    return { W, open, bucket: ms => { const o = open(ms); return ['overlap', 'london', 'newyork', 'asia'].find(k => o.includes(k)) || 'off'; } };
+  }
+  const dispTz = () => S.sessTz || 'Asia/Jakarta';
+  const tzTime = (ms, tz, sec) => new Date(ms).toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23', ...(sec ? { second: '2-digit' } : {}) });
+  const tzDate = (ms, tz) => new Date(ms).toLocaleDateString('id-ID', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+  const utcLabel = (tz, ms) => { const o = tzOffset(tz, ms), h = Math.floor(Math.abs(o) / 60), m = Math.abs(o) % 60; return 'UTC' + (o < 0 ? '−' : '+') + h + (m ? ':' + String(m).padStart(2, '0') : ''); };
+  const zoneAbbr = (tz, ms) => ({ 'Asia/Jakarta': 'WIB', 'Asia/Tokyo': 'JST', UTC: '', 'Europe/London': tzOffset(tz, ms) ? 'BST' : 'GMT', 'America/New_York': tzOffset(tz, ms) === -240 ? 'EDT' : 'EST' }[tz] ?? '');
+  const tzLabel = tz => (SESS_TZS.find(x => x[0] === tz) || [tz, tz])[1];
+  // forex is shut from Friday 17:00 to Sunday 17:00 New York time
+  const fxWeekend = ms => { const p = tzParts('America/New_York', ms); return p.weekday === 'Sat' || (p.weekday === 'Fri' && p.hour >= 17) || (p.weekday === 'Sun' && p.hour < 17); };
+
+  // closed trades of the period, each tagged with its session (cached until the trades, hours or server offset change)
+  function sessTrades() {
+    const off = srvOffset(), key = [S.sessStamp, off, ...['asia', 'london', 'newyork'].map(sessHours)].join('|');
+    if (S.sessCache?.key === key) return S.sessCache.trades;
+    const ts = (S.sessTrades || []).map(t => ({ ...t, at: ((t.open_time ?? t.close_time) - off) * 1000 })).sort((x, y) => x.close_time - y.close_time);
+    const c = ts.length ? sessClassifier(Math.min(...ts.map(t => t.at)) - 864e5, Math.max(...ts.map(t => t.at)) + 864e5) : null;
+    ts.forEach(t => { t.sess = c.bucket(t.at); });
+    S.sessCache = { key, trades: ts };
+    return ts;
+  }
+  function sessStats(ts) {
+    const out = Object.fromEntries([...SESS, SESS_OFF].map(x => [x.k, { k: x.k, n: 0, win: 0, loss: 0, net: 0, gp: 0, gl: 0, vol: 0, cum: 0, peak: 0, dd: 0 }]));
+    ts.forEach(t => { const b = out[t.sess]; b.n++; b.vol += t.volume; b.net += t.net; b.cum += t.net;
+      if (t.net > 0) { b.win++; b.gp += t.net; } else if (t.net < 0) { b.loss++; b.gl -= t.net; }
+      b.peak = Math.max(b.peak, b.cum); b.dd = Math.max(b.dd, b.peak - b.cum); });
+    return out;
+  }
+  const sessKeys = st => [...SESS.map(x => x.k), ...(st.off.n ? ['off'] : [])];
+  const sessDot = k => `<span class="dot" style="color:${SESS_BY[k].color}"></span>`;
+
+  function sessClocks(now, c) {
+    const card = (tz, title, k) => {
+      let st = '';
+      if (k) {
+        const w = c.W[k].find(x => x[0] <= now && now < x[1]), nx = c.W[k].find(x => x[0] > now);
+        st = w ? `<span class="up"><span class="dot g"></span> Sesi dibuka</span><span class="muted">${icon('i-clock')}${dur((w[1] - now) / 1000)} tersisa</span>`
+          : `<span class="down"><span class="dot r"></span> Sesi belum dibuka</span><span class="muted">${icon('i-clock')}${nx ? dur((nx[0] - now) / 1000) + ' lagi' : '–'}</span>`;
+      }
+      const open = k && c.open(now).includes(k);
+      return `<section class="card clk ${k ? open ? 'on' : 'off' : ''}"><small>${title}</small><b class="mono" data-clk="${tz}">${tzTime(now, tz, true)}</b>
+        <small>${[zoneAbbr(tz, now), '(' + utcLabel(tz, now) + ')'].filter(Boolean).join(' ').replace(/^\((.*)\)$/, '$1')}</small><small>${tzDate(now, tz)}</small>${st}</section>`;
+    };
+    return `<div class="clkrow">${card('Asia/Jakarta', 'Jakarta (WIB)')}${card('UTC', 'UTC')}${card('Europe/London', 'London', 'london')}${card('America/New_York', 'New York', 'newyork')}</div>`;
+  }
+  function sessNowCard(now, c) {
+    const open = c.open(now), cur = c.bucket(now), tz = dispTz();
+    return `<section class="card"><div class="ph"><h2>Status Sesi Saat Ini</h2><span class="chip ${cur === 'off' ? '' : 'g'}">${sessDot(cur)}${cur === 'off' ? 'Di luar sesi' : SESS_BY[cur].name + ' Session'}</span></div>
+      <div class="srows">${SESS.map(x => {
+        const w = c.W[x.k].find(v => v[1] > now), on = open.includes(x.k), soon = !on && w && w[0] - now < 3 * 3600e3;
+        return `<div><span>${sessDot(x.k)}<b>${x.name}</b></span>
+          <span class="${on ? 'up' : soon ? 'warn' : 'muted'}">${on ? 'Aktif' : soon ? 'Buka ' + dur((w[0] - now) / 1000) + ' lagi' : 'Tutup'}</span>
+          <span class="mono">${w ? tzTime(w[0], tz) + ' - ' + tzTime(w[1], tz) : '–'}</span></div>`; }).join('')}</div>
+      <div class="pf">${fxWeekend(now) ? '<span class="warn">Pasar forex libur akhir pekan</span> · ' : ''}Jam ditampilkan dalam ${esc(tzLabel(tz))}.</div></section>`;
+  }
+  function sessTimeline(now) {
+    const tz = dispTz(), p = tzParts(tz, now), a = wallToUtc(tz, p.year, p.month, p.day, 0), b = wallToUtc(tz, p.year, p.month, p.day + 1, 0);
+    const c = sessClassifier(a, b), pos = ms => ((ms - a) / (b - a) * 100).toFixed(2);
+    const ticks = Array.from({ length: 13 }, (_, i) => `<span style="left:${(i / 12 * 100).toFixed(2)}%">${String(i * 2).padStart(2, '0')}:00</span>`).join('');
+    const lanes = SESS.map(x => `<div class="lane"><span>${sessDot(x.k)}${x.name}</span><div class="track">${c.W[x.k].map(w => {
+      const f = Math.max(w[0], a), t = Math.min(w[1], b), wd = (t - f) / (b - a) * 100;
+      return `<i style="left:${pos(f)}%;width:${wd.toFixed(2)}%;background:${x.color}" title="${x.name} ${tzTime(w[0], tz)} - ${tzTime(w[1], tz)}">${wd > 14 ? tzTime(w[0], tz) + ' - ' + tzTime(w[1], tz) : ''}</i>`; }).join('')}</div></div>`).join('');
+    return `<section class="card"><div class="ph"><h2>Timeline Trading Session</h2><span class="muted">Waktu ${esc(tzLabel(tz))} · sekarang ${tzTime(now, tz)}</span></div>
+      <div class="tl"><div class="axis">${ticks}</div><div class="lanes">${lanes}<div class="now" style="--p:${pos(now) / 100}" title="Sekarang"></div></div></div></section>`;
+  }
+  function sessMarketCard(now, c) {
+    const cur = c.bucket(now), syms = (tel()?.symbols || []).filter(x => S.sessSym === 'ALL' || x.symbol === S.sessSym).slice(0, 6);
+    return `<section class="card"><div class="ph"><h2>Status Pasar per Symbol</h2></div><div class="tw"><table><thead><tr><th>Symbol</th><th>Sesi saat ini</th><th>Status trading</th><th class="r">Spread</th></tr></thead><tbody>
+      ${syms.map(x => { const live = Date.now() - (S.tickAt[x.symbol] || 0) < 120000;
+        return `<tr><td><b>${esc(x.symbol)}</b></td><td>${sessDot(cur)} ${SESS_BY[cur].name}</td><td><span class="chip ${live ? 'g' : ''}">${live ? 'Buka' : 'Tidak ada tick'}</span></td><td class="r num">${x.spread ?? '–'}</td></tr>`; }).join('')
+        || '<tr><td colspan="4" class="empty">Menunggu data simbol dari agent…</td></tr>'}</tbody></table></div>
+      <div class="pf">Status "Buka" berarti harga bergerak dalam 2 menit terakhir.</div></section>`;
+  }
+  function sessPerfCard(st, ts) {
+    const range = S.sessStart ? srvDay(S.sessStart) + ' – ' + srvDay(tel()?.server_time ?? S.sessStart) : '';
+    const pf = b => b.gl ? (b.gp / b.gl).toFixed(2) : b.gp ? '∞' : '–';
+    return `<section class="card"><div class="ph"><h2>Performa per Session <span class="muted" style="font-weight:400;font-size:13px">(${S.sessSym === 'ALL' ? 'Semua Symbol' : esc(S.sessSym)})</span></h2><span class="chip">${icon('i-cal')}${range}</span></div>
+      <div class="tw"><table><thead><tr><th>Sesi</th><th class="r">Total Trades</th><th class="r">Win Rate</th><th class="r">Net P/L (${viewCur()})</th><th class="r">Profit Factor</th><th class="r">Avg Win</th><th class="r">Avg Loss</th><th class="r">Max Drawdown</th></tr></thead><tbody>
+      ${sessKeys(st).map(k => { const b = st[k]; return `<tr><td>${sessDot(k)} ${SESS_BY[k].name}</td><td class="r num">${b.n}</td><td class="r num">${b.n ? (b.win / b.n * 100).toFixed(1) + '%' : '–'}</td>
+        <td class="r num ${cls(b.net)}">${fmtNum(b.net, true)}</td><td class="r num">${pf(b)}</td><td class="r num up">${b.win ? fmtNum(b.gp / b.win) : '–'}</td>
+        <td class="r num down">${b.loss ? fmtNum(-b.gl / b.loss) : '–'}</td><td class="r num down">${b.dd ? fmtNum(-b.dd) : '–'}</td></tr>`; }).join('')}
+      </tbody></table></div>${ts.length ? '' : '<div class="empty">Belum ada trade tertutup pada periode ini.</div>'}
+      <div class="pf">Trade dimasukkan ke sesi saat posisi dibuka; Overlap = London dan New York sama-sama buka.</div></section>`;
+  }
+  function sessChartCard(ts) {
+    const count = {}; ts.forEach(t => { count[t.symbol] = (count[t.symbol] || 0) + 1; });
+    const syms = Object.keys(count).sort((x, y) => count[y] - count[x]).slice(0, 3), keys = SESS.map(x => x.k);
+    const val = (k, sy) => sum(ts.filter(t => t.sess === k && t.symbol === sy), t => t.net);
+    const vals = keys.flatMap(k => syms.map(sy => conv(val(k, sy))));
+    const raw = (Math.max(0, ...vals) - Math.min(0, ...vals)) / 4 || 1, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 2.5, 5, 10].find(m => m * mag >= raw) * mag;
+    const lo = Math.floor(Math.min(0, ...vals) / step) * step, hi = Math.max(lo + step, Math.ceil(Math.max(0, ...vals) / step) * step), span = hi - lo;
+    const W = 440, H = 240, L = 52, B = 28, T = 10, y = v => T + (hi - v) / span * (H - T - B);
+    const gw = (W - L) / keys.length, bw = Math.min(28, (gw - 16) / Math.max(1, syms.length));
+    const grid = Array.from({ length: Math.round(span / step) + 1 }, (_, i) => lo + step * i);
+    const bars = keys.map((k, i) => syms.map((sy, j) => { const v = conv(val(k, sy)), x = L + i * gw + (gw - bw * syms.length) / 2 + j * bw;
+      return `<rect x="${x.toFixed(1)}" y="${Math.min(y(v), y(0)).toFixed(1)}" width="${(bw - 3).toFixed(1)}" height="${Math.max(1, Math.abs(y(v) - y(0))).toFixed(1)}" fill="${SERIES[j]}" rx="2"><title>${SESS_BY[k].name} · ${esc(sy)}: ${fmtNum(val(k, sy), true)}</title></rect>`; }).join('')
+      + `<text x="${(L + i * gw + gw / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle">${SESS_BY[k].name}</text>`).join('');
+    return `<section class="card"><div class="ph"><h2>Grafik Performa per Session</h2><span class="muted">Net P/L (${viewCur()})</span></div>
+      <div class="legend">${syms.map((sy, j) => `<span><i style="background:${SERIES[j]}"></i>${esc(sy)}</span>`).join('') || '<span class="muted">Belum ada trade.</span>'}</div>
+      <svg class="sbars" viewBox="0 0 ${W} ${H}" role="img" aria-label="Net P/L per sesi per simbol">
+        ${grid.map(v => `<line x1="${L}" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="gl"/><text x="${L - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${Math.abs(v) < step / 1e6 ? '0' : (v < 0 ? '−' : '') + Math.abs(+v.toPrecision(6)).toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`).join('')}
+        <line x1="${L}" x2="${W}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" class="zero"/>${bars}</svg></section>`;
+  }
+  function sessDailyCard(ts) {
+    const end = Math.floor((tel()?.server_time ?? Date.now() / 1000) / 86400), days = Array.from({ length: 7 }, (_, i) => end - i);
+    const row = d => { const dt = ts.filter(t => Math.floor(t.close_time / 86400) === d), v = k => sum(dt.filter(t => t.sess === k), t => t.net), tot = sum(dt, t => t.net);
+      return `<tr><td>${srvDay(d * 86400)}</td>${SESS.map(x => { const n = v(x.k); return `<td class="r num ${cls(n)}">${dt.some(t => t.sess === x.k) ? fmtNum(n, true) : '–'}</td>`; }).join('')}<td class="r num ${cls(tot)}"><b>${dt.length ? fmtNum(tot, true) : '–'}</b></td></tr>`; };
+    return `<section class="card"><div class="ph"><h2>Riwayat Performa Harian per Session</h2><span class="muted">7 hari terakhir (jam server)</span></div>
+      <div class="tw"><table><thead><tr><th>Tanggal</th>${SESS.map(x => `<th class="r">${x.name}</th>`).join('')}<th class="r">Total Harian</th></tr></thead><tbody>${days.map(row).join('')}</tbody></table></div></section>`;
+  }
+  function sessDistCard(st) {
+    const by = S.sessDist === 'volume' ? 'vol' : 'n', keys = sessKeys(st), tot = sum(keys, k => st[k][by]), C = 2 * Math.PI * 60;
+    let acc = 0;
+    const arcs = tot ? keys.map(k => { const f = st[k][by] / tot, a = `<circle r="60" cx="80" cy="80" fill="none" stroke="${SESS_BY[k].color}" stroke-width="24" stroke-dasharray="${(f * C).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-acc * C).toFixed(2)}" transform="rotate(-90 80 80)"><title>${SESS_BY[k].name}: ${(f * 100).toFixed(1)}%</title></circle>`; acc += f; return a; }).join('')
+      : `<circle r="60" cx="80" cy="80" fill="none" stroke="var(--panel-3)" stroke-width="24"/>`;
+    return `<section class="card"><div class="ph"><h2>Distribusi Trade per Session</h2><div class="seg"><button data-sdist="count" class="${by === 'n' ? 'on' : ''}">Jumlah Trade</button><button data-sdist="volume" class="${by === 'vol' ? 'on' : ''}">Volume</button></div></div>
+      <div class="donut"><svg viewBox="0 0 160 160" role="img" aria-label="Distribusi trade per sesi">${arcs}<text x="80" y="80" text-anchor="middle" class="big">${by === 'n' ? tot : tot.toFixed(2)}</text><text x="80" y="100" text-anchor="middle">${by === 'n' ? 'Trades' : 'Lot'}</text></svg>
+        <div class="dl">${keys.map(k => `<div>${sessDot(k)}<span>${SESS_BY[k].name}</span><b class="num">${by === 'n' ? st[k].n : st[k].vol.toFixed(2)}</b><span class="muted num">(${tot ? (st[k][by] / tot * 100).toFixed(1) : '0.0'}%)</span></div>`).join('')}</div></div></section>`;
+  }
+  function sessSettingsCard(now, c) {
+    const ss = tel()?.sessions, tz = dispTz(), adm = can('admin') && !!ss && S.st?.agent?.online && !S.pending;
+    const allow = (ss?.allow || 'asia,london,newyork').split(',').filter(Boolean);
+    const rows = SESS.map(x => { const w = c.W[x.k].find(v => v[1] > now);
+      return `<div><span>${sessDot(x.k)}${x.name}</span><span class="mono muted">${w ? tzTime(w[0], tz) + ' - ' + tzTime(w[1], tz) : '–'}</span>
+        <button class="sw sm ${allow.includes(x.k) ? 'on' : ''}" data-sallow="${x.k}" aria-label="${allow.includes(x.k) ? 'Larang' : 'Izinkan'} entry di sesi ${x.name}" ${adm ? '' : 'disabled'}></button></div>`; }).join('');
+    const edit = S.sessEdit ? `<form id="sessForm" class="sform">${SESS.filter(x => x.tz).map(x => { const [a, b] = sessHours(x.k).split('-');
+        return `<label>${x.name} (jam ${x.city})<span><input type="time" id="sh-${x.k}-a" value="${a}" required> – <input type="time" id="sh-${x.k}-b" value="${b}" required></span></label>`; }).join('')}
+        <div class="srbtns"><button class="btn primary" type="submit" ${adm ? '' : 'disabled'}>Simpan jadwal</button><button class="btn outline" type="button" data-sedit="0">Batal</button></div></form>` : '';
+    return `<section class="card sset"><div class="ph"><h2>${icon('i-gear')}Pengaturan Session</h2><button class="btn sm outline" data-sedit="1" ${adm && !S.sessEdit ? '' : 'disabled'}>Edit jadwal</button></div>
+      <div class="sbody">
+        <label>Zona waktu tampilan<select id="sessTz">${SESS_TZS.map(([v, l]) => `<option value="${v}" ${v === tz ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <div><small class="muted">Jadwal sesi (${esc(tzLabel(tz))}) · saklar = sesi yang diizinkan</small><div class="srows tight">${rows}</div></div>${edit}
+        <div class="sfilter"><span><b>Filter Session untuk EA</b><small class="muted">${ss?.enabled ? 'Entry baru hanya di sesi yang diizinkan' : 'Mati: EA boleh entry di semua jam'}</small></span>
+          <button class="sw ${ss?.enabled ? 'on' : ''}" data-sfilter aria-label="${ss?.enabled ? 'Matikan' : 'Nyalakan'} filter sesi" ${adm ? '' : 'disabled'}>${ss?.enabled ? 'ON' : 'OFF'}</button></div>
+        <div><small class="muted">Sesi diizinkan</small><div class="tags">${allow.map(k => `<span class="chip">${sessDot(k)}${SESS_BY[k]?.name || esc(k)}</span>`).join('')}</div></div>
+        ${ss?.enabled ? `<div class="${ss.blocked ? 'warn' : 'up'}">${ss.blocked ? 'Sekarang di luar sesi yang diizinkan: entry baru ditahan.' : 'Sekarang di dalam sesi yang diizinkan.'}</div>` : ''}
+        <label>Kebijakan saat sesi berakhir<select disabled><option>Hanya stop entry baru</option></select></label>
+        <small class="muted">Posisi terbuka tidak ditutup otomatis. Berlaku untuk semua EA dan StopReverse; EA dengan AlgoDeskGuard berhenti entry, EA tanpa guard ditutup entry barunya oleh agent.</small>
+      </div>
+      ${!ss ? '<div class="pf">Perbarui agent ke 0.16 untuk filter sesi dari dashboard.</div>' : !can('admin') ? '<div class="pf">Hanya Super Admin yang dapat mengubah filter sesi.</div>' : ''}</section>`;
+  }
+  function sessionView() {
+    const now = Date.now(), c = sessClassifier(now - 2 * 864e5, now + 2 * 864e5);
+    const ts = sessTrades().filter(t => S.sessSym === 'ALL' || t.symbol === S.sessSym), st = sessStats(ts);
+    return `<div class="grid g-sess1">${sessClocks(now, c)}${sessNowCard(now, c)}</div>
+      <div class="grid g-sess1 al-start">${sessTimeline(now)}${sessMarketCard(now, c)}</div>
+      <div class="grid g-sess1 al-start"><div class="grid">${sessPerfCard(st, ts)}<div class="grid g-2">${sessChartCard(ts)}${sessDistCard(st)}</div>${sessDailyCard(ts)}</div>${sessSettingsCard(now, c)}</div>`;
+  }
+  const loadSess = async () => { const r = await api('/trades?days=' + S.sessDays); S.sessTrades = r.trades; S.sessStart = r.start; S.sessStamp = Date.now(); };
+
   function settingsView() {
     const p = tel()?.protection;
-    return `<section class="card"><div class="ph"><h2>Batas rugi harian</h2><span class="muted">Menaikkan batas tidak mencabut blokir yang sudah terjadi hari ini.</span></div>
-      <form id="limitForm" class="fgrid">
-        <label>Batas rugi harian (% dari equity awal hari)<input id="limIn" type="number" min="0.5" max="20" step="0.1" value="${p?.limit_pct ?? 3}" ${can('admin') ? '' : 'disabled'}></label>
-        <div style="display:flex;align-items:flex-end"><button class="btn primary" type="submit" ${can('admin') && !S.pending ? '' : 'disabled'}>Kirim ke agent</button></div>
-      </form>${can('admin') ? '' : '<div class="pf">Hanya Super Admin yang dapat mengubah batas rugi.</div>'}</section>
+    return `<section class="card"><div class="ph"><h2>Batas rugi harian</h2><span class="muted">${p?.enabled === false ? 'Proteksi mati' : p?.limit_pct != null ? 'Sekarang ' + p.limit_pct.toFixed(2) + '% (' + fmtMoney(p.limit_amount) + ')' : ''}</span></div>
+      <div class="pf" style="border-top:0">Batas rugi harian, proteksi ON/OFF, dan buka blokir diatur di <button class="btn sm outline" data-go="risk">Risk Center</button></div></section>
       <section class="card"><div class="ph"><h2>Mata uang tampilan</h2><span class="muted">Akun dalam ${esc(acctCur())}. USC = USD ÷ 100. Kurs USD/IDR ${idrRate() ? idrRate().toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' dari ' + idrSource() + (!brokerIdr() && apiIdr() && S.fx.updated ? ', diambil ' + new Date(S.fx.updated * 1000).toLocaleString('id-ID') : '') : 'belum tersedia, isi manual'}.</span></div>
       <form id="fxForm" class="fgrid">
         <label>Kurs manual 1 USD = … IDR<input id="fxIn" type="number" min="1000" max="100000" step="1" value="${manualIdr() || ''}" placeholder="mis. kurs hari ini" ${brokerIdr() || apiIdr() ? 'disabled' : ''}></label>
@@ -1091,7 +1367,7 @@ td.c, th.c { text-align: center; }
       <section class="card"><div class="ph"><h2>Log perintah</h2><span class="muted">Setiap perintah dicatat dengan pengirim, peran, dan konfirmasi agent</span></div>
       ${S.cmds.length ? `<div class="tw"><table><thead><tr><th>Waktu (server)</th><th>Pengguna</th><th>Perintah</th><th>Status</th><th>Hasil</th></tr></thead><tbody>
       ${S.cmds.map(c => `<tr><td class="num">${srvDayTime(c.issued_at + srvOffset())}</td><td>${esc(c.issued_by)} <span class="muted">(${ROLE_LABEL[c.issued_role] || '–'})</span></td>
-        <td>${CMD_LABEL[c.type] || esc(c.type)}${c.magic ? ' ' + esc(eaLabel(c.magic)) : ''}${c.value != null ? ' ' + c.value + '%' : ''}</td>
+        <td>${CMD_LABEL[c.type] || esc(c.type)}${c.magic ? ' ' + esc(eaLabel(c.magic)) : ''}${c.value != null ? ' ' + (c.mode === 'amount' ? fmtMoney(c.value) : c.value + '%') : ''}${c.type === 'risk_set' && c.enabled != null ? (c.enabled ? ' ON' : ' OFF') : ''}${c.type === 'session_set' ? ' ' + esc([c.enabled == null ? '' : c.enabled ? 'ON' : 'OFF', c.allow || ''].filter(Boolean).join(' · ')) : ''}</td>
         <td><span class="chip ${c.status === 'acked' ? 'g' : c.status === 'pending' ? 'y' : 'r'}">${STATUS_LABEL[c.status] || esc(c.status)}</span></td><td>${esc(c.result || '')}</td></tr>`).join('')}
       </tbody></table></div>` : `<div class="empty">Belum ada perintah.</div>`}</section>`;
   }
@@ -1109,20 +1385,26 @@ td.c, th.c { text-align: center; }
     basket: ['Basket Monitor', 'Posisi terbuka dikelompokkan per Magic Number dan simbol.'],
     risk: ['Risk Center', 'Proteksi rugi harian, margin, dan eksposur.'],
     analytics: ['Strategy Analytics', 'Perbandingan EA dan perkembangan equity.'],
+    session: ['Trading Session', 'Pantau sesi pasar, waktu trading, dan performa berdasarkan sesi.'],
     market: ['Market Watch', 'Harga, struktur pasar, RSI/ATR, dan sinyal untuk simbol di Market Watch terminal.'],
     fx: ['Kurs USD', 'Harga 1 USD dalam rupiah secara realtime, dan posisi akun dalam USD dan IDR.'],
     diag: ['Broker Diagnostics', 'Kondisi agent, terminal, koneksi broker, dan spread.'],
     users: ['Pengguna & RBAC', 'Siapa yang bisa melihat dan siapa yang bisa mengirim perintah ke agent.'],
-    settings: ['Settings', 'Batas rugi harian, mata uang tampilan, dan log perintah.'],
+    settings: ['Settings', 'Mata uang tampilan dan log perintah.'],
   };
   function head() {
     const [h, p] = HEADS[S.view];
     const acts = S.view === 'eas' && can('control') ? `<div class="acts"><button class="btn green" data-act="allon" ${S.st?.agent?.online ? '' : 'disabled'}>${icon('i-play')}Aktifkan Semua EA</button>
       <button class="btn red" data-act="alloff" ${S.st?.agent?.online ? '' : 'disabled'}>${icon('i-pause')}Nonaktifkan Semua EA</button><button class="btn outline" data-go="settings">${icon('i-gear')}Pengaturan Global</button></div>` : '';
-    return S.view === 'overview' ? '' : `<div class="phead"><div><h1>${h}</h1><p>${p}</p></div>${acts}</div>`;
+    const symOpts = [...new Set([...(S.sessTrades || []).map(t => t.symbol), ...(tel()?.symbols || []).map(x => x.symbol)])].sort();
+    const sessActs = S.view === 'session' ? `<div class="acts">
+      <select id="sessDays" aria-label="Periode">${[7, 30, 90].map(d => `<option value="${d}" ${d === S.sessDays ? 'selected' : ''}>${d} hari terakhir</option>`).join('')}</select>
+      <select id="sessSym" aria-label="Simbol"><option value="ALL">Semua Symbol</option>${symOpts.map(x => `<option ${x === S.sessSym ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
+      <button class="btn primary" data-act="sessrefresh">${icon('i-sync')}Refresh</button></div>` : '';
+    return S.view === 'overview' ? '' : `<div class="phead"><div><h1>${h}</h1><p>${p}</p></div>${acts}${sessActs}</div>`;
   }
   function viewBody() {
-    if (!tel() && !['users', 'settings', 'fx'].includes(S.view)) return emptyState();
+    if (!tel() && !['users', 'settings', 'fx', 'session'].includes(S.view)) return emptyState();
     switch (S.view) {
       case 'overview': return filterBar() + kpiRow()
         + `<div class="grid g-ov1">${equityCard()}${dailyCard()}${symPerfCard()}</div>`
@@ -1132,9 +1414,10 @@ td.c, th.c { text-align: center; }
       case 'history': return historyTable(S.histTrades, { days: true });
       case 'eas': return strategyCards() + eaCards() + `<div class="grid g-ea2">${perfSummary()}${allocCard()}</div><div class="grid g-ea2">${logsCard()}${resourceCard()}</div>`;
       case 'basket': return basketCard(true);
-      case 'risk': return riskCard() + `<div class="grid g-2">${protControl()}${exposureCard()}</div>`;
+      case 'risk': return riskCard() + `<div class="grid g-2">${riskSettings()}${protControl()}</div>` + exposureCard();
       case 'analytics': return filterBar() + kpiRow() + `<div class="grid g-2">${equityCard()}${dailyCard()}</div>` + perfSummary() + `<div class="grid g-2">${symPerfCard()}${allocCard()}</div>`;
       case 'market': return marketCard();
+      case 'session': return sessionView();
       case 'fx': return fxView();
       case 'diag': return diagCard();
       case 'users': return usersView();
@@ -1156,7 +1439,7 @@ td.c, th.c { text-align: center; }
   // ---------- data loading ----------
   async function loadState() {
     const st = await api('/state');
-    (st.telemetry?.symbols || []).forEach(s => { const h = S.hist[s.symbol] ||= []; if (h[h.length - 1] !== s.bid) h.push(s.bid); if (h.length > 60) h.shift(); });
+    (st.telemetry?.symbols || []).forEach(s => { const h = S.hist[s.symbol] ||= []; if (h[h.length - 1] !== s.bid) { h.push(s.bid); S.tickAt[s.symbol] = Date.now(); } if (h.length > 60) h.shift(); });
     const switched = S.st && st.telemetry && S.st.telemetry?.account?.login !== st.telemetry.account.login;
     S.st = st; S.fetchedAt = Date.now(); S.lastUpdate = Date.now();
     if (switched) await Promise.all([loadEquity(), loadStats()]);  // another account logged in: drop the old account's data now
@@ -1170,6 +1453,7 @@ td.c, th.c { text-align: center; }
       api('/eas/stats?period=day'), api('/eas/stats?period=' + S.perfTab), api('/trades?days=' + S.days), api('/deals?limit=300'), api('/balance?days=' + S.days).then(r => { S.bal = r; })]);
     S.statsDay = day.eas; S.statsPer = per.eas; S.perStart = per.start; S.trades = tr.trades; S.tradesStart = tr.start; S.deals = dl.deals; S.dealsStart = dl.start;
     if (S.view === 'history') S.histTrades = (await api('/trades?days=' + S.histDays)).trades;
+    if (S.view === 'session') await loadSess();
   }
   function every(ms, fn) { const run = () => fn().catch(e => console.warn(e)); run(); S.timers.push(setInterval(run, ms)); }
   function startPolling() {
@@ -1179,7 +1463,7 @@ td.c, th.c { text-align: center; }
     every(30000, async () => { await loadEquity(); safeRender(); });
     every(15000, async () => { if (!S.fx?.usd_idr || S.view === 'fx' || Date.now() - S.fxAt > 60000) { await loadFx(); safeRender(); } });
     every(5000, async () => { if (['settings', 'eas'].includes(S.view)) { await loadCmds(); safeRender(); } });
-    S.timers.push(setInterval(() => { tickClock(); const a = $('telAgo'), g = ago(); if (a && g != null) a.textContent = Math.round(g) + ' detik lalu'; }, 1000));
+    S.timers.push(setInterval(() => { tickClock(); document.querySelectorAll('[data-clk]').forEach(el => { el.textContent = tzTime(Date.now(), el.dataset.clk, true); }); const a = $('telAgo'), g = ago(); if (a && g != null) a.textContent = Math.round(g) + ' detik lalu'; }, 1000));
     tickClock();
   }
   async function refreshAll() { try { await Promise.all([loadState(), loadStats(), loadEquity(), loadCmds()]); render(); toast('Data diperbarui.'); } catch (e) { toast(e.message, 'err'); } }
@@ -1238,7 +1522,8 @@ td.c, th.c { text-align: center; }
       S.view = nav.dataset.view || nav.dataset.go; S.confirm = false; S.edit = null; window.scrollTo(0, 0);
       try { if (S.view === 'settings' || S.view === 'eas') await loadCmds(); if (S.view === 'users') await loadUsers();
         if (S.view === 'history') S.histTrades = (await api('/trades?days=' + S.histDays)).trades;
-        if (S.view === 'fx') await loadFx(); } catch (err) { toast(err.message, 'err'); }
+        if (S.view === 'fx') await loadFx();
+        if (S.view === 'session') await loadSess(); } catch (err) { toast(err.message, 'err'); }
       render(); return;
     }
     if (e.target.closest('#themeBtn')) { const t = theme() === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; pref.set('theme', t); showTheme(); return; }
@@ -1264,6 +1549,21 @@ td.c, th.c { text-align: center; }
       else if (a === 'closego') { S.srConfirm = false; sendCommand({ type: 'sr_close' }, 'Tutup posisi StopReverse'); }
       return;
     }
+    const sd = e.target.closest('[data-sdist]');
+    if (sd) { S.sessDist = sd.dataset.sdist; render(); return; }
+    const se = e.target.closest('[data-sedit]');
+    if (se && !se.disabled) { S.sessEdit = se.dataset.sedit === '1'; render(); return; }
+    const sa = e.target.closest('[data-sallow]');
+    if (sa && !sa.disabled) {
+      const k = sa.dataset.sallow, cur = (tel()?.sessions?.allow || '').split(',').filter(Boolean);
+      const next = cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k];
+      if (!next.length) { toast('Pilih minimal satu sesi yang diizinkan.', 'err'); return; }
+      sendCommand({ type: 'session_set', allow: SESS.map(x => x.k).filter(x => next.includes(x)).join(',') }, `${cur.includes(k) ? 'Larang' : 'Izinkan'} sesi ${SESS_BY[k].name}`); return;
+    }
+    const sf = e.target.closest('[data-sfilter]');
+    if (sf && !sf.disabled) { const on = !!tel()?.sessions?.enabled; sendCommand({ type: 'session_set', enabled: !on }, on ? 'Matikan filter sesi' : 'Nyalakan filter sesi'); return; }
+    const rk = e.target.closest('[data-risk]');
+    if (rk && !rk.disabled) { const on = tel()?.protection?.enabled !== false; sendCommand({ type: 'risk_set', enabled: !on }, on ? 'Matikan proteksi rugi' : 'Nyalakan proteksi rugi'); return; }
     const mg = e.target.closest('[data-magic]');
     if (mg && !mg.disabled) { const m = +mg.dataset.magic, off = eaOff(m); sendCommand({ type: off ? 'enable_magic' : 'disable_magic', magic: m }, `${off ? 'Start' : 'Stop'} ${eaLabel(m)}`); return; }
     const ed = e.target.closest('[data-edit]');
@@ -1277,11 +1577,14 @@ td.c, th.c { text-align: center; }
     if (act === 'closemodal') { if (e.target === actEl || actEl.tagName === 'BUTTON') { S.detail = null; render(); } return; }
     if (act === 'logout') { try { await api('/auth/logout', { method: 'POST', body: {} }); } catch (_) {} showLogin(); }
     if (act === 'refresh') refreshAll();
+    if (act === 'sessrefresh') { try { await Promise.all([loadState(), loadSess()]); toast('Data sesi diperbarui.'); } catch (err) { toast(err.message, 'err'); } render(); }
     if (act === 'allon' || act === 'alloff') bulkEa(act === 'allon');
     if (act === 'editcancel') { S.edit = null; render(); }
     if (act === 'logclear') { S.logEa = S.logSym = S.logEv = ''; render(); }
     if (act === 'pause') { S.confirm = true; render(); }
     if (act === 'cancel') { S.confirm = false; render(); }
+    if (act === 'unblock') { S.confirm = 'unblock'; render(); }
+    if (act === 'unblockgo') { S.confirm = false; sendCommand({ type: 'risk_reset' }, 'Buka blokir'); }
     if (act === 'send') { S.confirm = false; const paused = tel()?.protection?.entry_state === 'paused'; sendCommand({ type: paused ? 'resume_entry' : 'pause_entry' }, paused ? 'Lanjutkan entry' : 'Jeda entry'); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.detail != null) { S.detail = null; render(); } });
@@ -1290,6 +1593,10 @@ td.c, th.c { text-align: center; }
     if (id === 'curSel') { S.cur = el.value; pref.set('cur', S.cur); }
     else if (id === 'fSym') S.sym = el.value;
     else if (id === 'fBkt') S.basketSym = el.value;
+    else if (id === 'riskMode') S.riskMode = el.value;
+    else if (id === 'sessTz') { S.sessTz = el.value; pref.set('sessTz', el.value); }
+    else if (id === 'sessSym') S.sessSym = el.value;
+    else if (id === 'sessDays') { S.sessDays = +el.value; el.blur(); try { await loadSess(); } catch (err) { toast(err.message, 'err'); } }
     else if (id === 'lEa') S.logEa = el.value;
     else if (id === 'lSym') S.logSym = el.value;
     else if (id === 'lEv') S.logEv = el.value;
@@ -1320,7 +1627,19 @@ td.c, th.c { text-align: center; }
         const body = { type: 'sr_set', symbol: $('srSym').value.trim(), lots: parseFloat($('srLots').value), dist: parseFloat($('srDist').value), step: parseFloat($('srStep').value) };
         document.activeElement?.blur(); await sendCommand(body, 'Simpan pengaturan StopReverse');
       }
-      else if (f.id === 'limitForm') { const v = parseFloat($('limIn').value); $('limIn').blur(); await sendCommand({ type: 'set_limit', value: v }, `Ubah batas rugi ke ${v}%`); await loadCmds(); }
+      else if (f.id === 'sessForm') {
+        const body = { type: 'session_set' };
+        SESS.filter(x => x.tz).forEach(x => { body[x.k + '_hours'] = $(`sh-${x.k}-a`).value + '-' + $(`sh-${x.k}-b`).value; });
+        if (SESS.some(x => x.tz && body[x.k + '_hours'].split('-')[0] === body[x.k + '_hours'].split('-')[1])) throw new Error('Jam buka dan tutup sesi tidak boleh sama');
+        document.activeElement?.blur(); S.sessEdit = false; await sendCommand(body, 'Simpan jadwal sesi');
+      }
+      else if (f.id === 'riskForm') {
+        const v = parseFloat($('riskVal').value), mode = $('riskMode').value, v016 = tel()?.protection?.enabled !== undefined;
+        document.activeElement?.blur();
+        await sendCommand(v016 ? { type: 'risk_set', mode, value: v } : { type: 'set_limit', value: v },
+          mode === 'pct' ? `Ubah batas rugi ke ${v}%` : `Ubah batas rugi ke ${fmtMoney(v)}`);
+        S.riskMode = null; await loadCmds();
+      }
       else if (f.id === 'eaAdd') { await api('/eas/' + $('eaAddMagic').value, { method: 'PUT', body: { name: $('eaAddName').value, scope: '' } }); toast('EA didaftarkan.'); }
       else if (f.dataset.eaform) { const m = f.dataset.eaform; await api('/eas/' + m, { method: 'PUT', body: { name: $('ean-' + m).value, scope: $('eas-' + m).value } }); S.edit = null; toast('EA disimpan.'); }
       else if (f.id === 'userAdd') { await api('/users', { method: 'POST', body: { username: $('nu-user').value, display_name: $('nu-name').value, role: $('nu-role').value, password: $('nu-pw').value } }); await loadUsers(); toast('Pengguna ditambahkan.'); }

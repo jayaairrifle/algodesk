@@ -2,7 +2,7 @@
 
 It signs requests exactly like the MQL5 agent, sends telemetry for a
 simulated demo account and applies dashboard commands the same way
-(pause/resume, enable/disable magic, set_limit, daily loss block).
+(pause/resume, enable/disable magic, set_limit/risk_set/risk_reset, daily loss block, session filter).
 
     python tools/fake_agent.py --url http://127.0.0.1:8000/api --agent vps-01 --secret <secret>
 """
@@ -40,7 +40,9 @@ class Sim:
         self.baseline = 10246.38
         self.day_balance = self.balance
         self.day_start = int(time.time()) // 86400 * 86400
-        self.limit_pct = 3.0
+        self.risk_on, self.limit_mode, self.limit_cfg_pct, self.limit_amt = True, "pct", 3.0, 0.0
+        self.sess = {"enabled": False, "allow": "asia,london,newyork",
+                     "asia_hours": "09:00-18:00", "london_hours": "08:00-17:00", "newyork_hours": "08:00-17:00"}
         self.paused = False
         self.blocked = False
         self.disabled: set[int] = set()
@@ -96,12 +98,37 @@ class Sim:
     def sym(self, name):
         return next(s for s in self.symbols if s["symbol"] == name)
 
+    @property
+    def limit_pct(self):
+        if not self.risk_on:
+            return 0.0
+        return self.limit_cfg_pct if self.limit_mode == "pct" else self.limit_amt / self.baseline * 100
+
+    def active_sessions(self, now=None):
+        """Sessions open now, each in its own city's local time (as the MQL5 agent computes them)."""
+        from datetime import datetime, timezone
+        from zoneinfo import ZoneInfo
+        now = datetime.now(timezone.utc) if now is None else now
+        def open_(tz, hours):
+            t = now.astimezone(ZoneInfo(tz))
+            m = t.hour * 60 + t.minute
+            a, b = [int(x[:2]) * 60 + int(x[3:]) for x in hours.split("-")]
+            return a <= m < b if a <= b else m >= a or m < b
+        out = [n for n, tz in (("asia", "Asia/Tokyo"), ("london", "Europe/London"), ("newyork", "America/New_York"))
+               if open_(tz, self.sess[n + "_hours"])]
+        if "london" in out and "newyork" in out:
+            out.append("overlap")
+        return out
+
+    def session_blocked(self):
+        return self.sess["enabled"] and not set(self.active_sessions()) & set(self.sess["allow"].split(","))
+
     def step(self):
         for s in self.symbols:
             s["bid"] = max(s["point"], s["bid"] + random.gauss(0, 1) * s["atr"] * s["point"] * 0.05)
             s["rsi"] = min(85, max(15, s["rsi"] + random.gauss(0, 0.6) + (50 - s["rsi"]) * 0.01))
         # now and then an EA that is allowed to trade closes a trade
-        if random.random() < 0.02 and not self.blocked and not self.paused:
+        if random.random() < 0.02 and not self.blocked and not self.paused and not self.session_blocked():
             magic, sym, _, edge = random.choice(self.bots)
             if magic not in self.disabled:
                 net = round(random.gauss(edge, 12), 2)
@@ -109,7 +136,7 @@ class Sim:
                 self.balance += net
         # optional steady loss to watch the protection trigger
         self.balance -= self.loss_drift
-        if not self.blocked and self.baseline - self.equity() >= self.baseline * self.limit_pct / 100:
+        if not self.blocked and self.limit_pct > 0 and self.baseline - self.equity() >= self.baseline * self.limit_pct / 100:
             self.blocked = True
             print("batas rugi tercapai: entry diblokir")
 
@@ -123,7 +150,7 @@ class Sim:
         return self.balance + sum(self.profit(p) for p in self.positions)
 
     def entry_state(self):
-        return "blocked" if self.blocked else "paused" if self.paused else "allowed"
+        return "blocked" if self.blocked else "paused" if self.paused else "session" if self.session_blocked() else "allowed"
 
     def telemetry(self, agent_id):
         eq = self.equity()
@@ -141,10 +168,13 @@ class Sim:
                         "balance": round(self.balance, 2), "equity": round(eq, 2), "margin": margin,
                         "free_margin": round(eq - margin, 2), "margin_level": round(eq / margin * 100, 2),
                         "margin_call": 100.0, "stop_out": 50.0, "leverage": 500},
-            "protection": {"day_start": self.day_start, "baseline": self.baseline, "limit_pct": self.limit_pct,
+            "protection": {"day_start": self.day_start, "baseline": self.baseline, "limit_pct": round(self.limit_pct, 4),
+                           "enabled": self.risk_on, "limit_mode": self.limit_mode, "close_all_on_limit": False,
+                           "limit_value": self.limit_cfg_pct if self.limit_mode == "pct" else self.limit_amt,
                            "limit_amount": round(self.baseline * self.limit_pct / 100, 2),
                            "loss_used": round(max(0.0, self.baseline - eq), 2), "entry_state": self.entry_state(),
                            "disabled_magics": sorted(self.disabled)},
+            "sessions": self.sess | {"active": ",".join(self.active_sessions()), "blocked": self.session_blocked(), "gmt": int(time.time())},
             "pl": {"realized": self.realized_today(), "floating": round(eq - self.balance, 2), "closed_deals": 0},
             "fx": {"usd_idr": self.usd_idr},
             "terminal": {"build": 4755, "memory_mb": 346, "memory_total_mb": 8192, "cpu_cores": 4, "ping_ms": 38.2, "trade_allowed": True},
@@ -182,8 +212,32 @@ class Sim:
             v = float(cmd.get("value") or 0)
             if not 0.5 <= v <= 20:
                 return False, "batas harus 0.5 sampai 20 persen"
-            self.limit_pct = v
-            return True, f"batas rugi diubah ke {v:.2f}%"
+            self.risk_on, self.limit_mode, self.limit_cfg_pct = True, "pct", v
+            return True, self.after_risk_change()
+        if t == "risk_set":
+            mode, v = cmd.get("mode"), float(cmd.get("value") or 0)
+            if mode == "pct" and not 0.5 <= v <= 20:
+                return False, "batas harus 0.5 sampai 20 persen"
+            if mode == "amount" and v <= 0:
+                return False, "nominal batas harus lebih dari 0"
+            if mode == "pct":
+                self.limit_mode, self.limit_cfg_pct = "pct", v
+            if mode == "amount":
+                self.limit_mode, self.limit_amt = "amount", v
+            if cmd.get("enabled") is not None:
+                self.risk_on = bool(cmd["enabled"])
+            return True, self.after_risk_change()
+        if t == "risk_reset":
+            if not self.blocked:
+                return True, "tidak ada blokir"
+            self.blocked = False
+            if self.limit_pct > 0 and self.baseline - self.equity() >= self.baseline * self.limit_pct / 100:
+                self.baseline = round(self.equity(), 2)
+                return True, f"blokir dicabut, rugi hari ini dihitung ulang dari equity {self.baseline:.2f}"
+            return True, "blokir dicabut"
+        if t == "session_set":
+            self.sess |= {k: cmd[k] for k in ("enabled", "allow", "asia_hours", "london_hours", "newyork_hours") if cmd.get(k) is not None}
+            return True, f"filter sesi aktif: {self.sess['allow']}" if self.sess["enabled"] else "filter sesi mati"
         if t == "sr_set":
             if cmd.get("symbol") and not any(x["symbol"] == cmd["symbol"] for x in self.symbols):
                 return False, f"simbol {cmd['symbol']} tidak ada di broker ini"
@@ -195,10 +249,21 @@ class Sim:
             return True, "StopReverse dimatikan, posisi dan stop order ditutup"
         return False, f"perintah tidak dikenal: {t}"
 
+    def after_risk_change(self):
+        if not self.risk_on:
+            self.blocked = False
+            return "proteksi rugi harian dimatikan"
+        msg = f"batas rugi harian {self.limit_pct:.2f}%"
+        if self.blocked and self.baseline - self.equity() < self.baseline * self.limit_pct / 100:
+            self.blocked = False
+            msg += ", blokir dicabut karena rugi masih di bawah batas"
+        return msg
+
     def strategy(self):
         """The StopReverse block of agent 0.15 telemetry."""
         sr, on = self.sr, self.sr["enabled"]
-        block = "" if not on else ("entry dijeda dari dashboard" if self.paused else "batas rugi harian tercapai" if self.blocked else "")
+        block = "" if not on else ("entry dijeda dari dashboard" if self.paused else "batas rugi harian tercapai" if self.blocked
+                             else "di luar sesi trading yang diizinkan" if self.session_blocked() else "")
         bid = self.sym(sr["symbol"])["bid"]
         status = "OFF" if not on else f"BUY {sr['lots']:.2f} @ {bid - 0.4:.2f} (+0.40) | SELL STOP {bid - sr['dist']:.2f} = " + ("BALIK ARAH" if not block else f"KELUAR saja ({block})")
         return {"id": "stop_reverse", "name": "XAU StopReverse", "magic": 777001, "hedging": True,
