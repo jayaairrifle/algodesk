@@ -78,6 +78,20 @@ class Sim:
     def realized_today(self):
         return round(sum(d["profit"] + d["commission"] for d in self.deals if d["time"] >= self.day_start), 2)
 
+    TFS = (("M1", .1), ("M5", .25), ("M15", .45), ("M30", .7), ("H1", 1), ("H4", 2), ("D1", 4.5), ("W1", 11), ("MN1", 24))
+
+    def timeframes(self, s, signal):
+        """Indicators per timeframe, as agent 0.14 sends them: H1 is the symbol's own values,
+        the others drift from it by a fixed per-symbol, per-timeframe offset."""
+        out = {}
+        for i, (name, atr_mult) in enumerate(self.TFS):
+            rnd = random.Random(f"{s['symbol']}{name}")
+            v = dict(s, rsi=s["rsi"] if name == "H1" else min(90, max(10, s["rsi"] + rnd.uniform(-18, 18))),
+                     structure=s["structure"] if name == "H1" else rnd.choice(("bull", "bear", "mixed")))
+            out[name] = {"rsi": round(v["rsi"], 1), "atr_points": round(s["atr"] * atr_mult, 1),
+                         "structure": v["structure"], "signal": signal(v)}
+        return out
+
     def sym(self, name):
         return next(s for s in self.symbols if s["symbol"] == name)
 
@@ -137,7 +151,8 @@ class Sim:
                           | {"profit": self.profit(p), "digits": self.sym(p["symbol"])["digits"]} for p in self.positions],
             "symbols": [{"symbol": s["symbol"], "digits": s["digits"], "bid": round(s["bid"], s["digits"]),
                          "ask": round(s["bid"] + s["spread"] * s["point"], s["digits"]), "spread": s["spread"], "day_open": round(s["open"], s["digits"]),
-                         "rsi": round(s["rsi"], 1), "atr_points": s["atr"], "structure": s["structure"], "signal": signal(s)}
+                         "rsi": round(s["rsi"], 1), "atr_points": s["atr"], "structure": s["structure"], "signal": signal(s),
+                         "tf": self.timeframes(s, signal)}
                         for s in self.symbols],
             "timeframe": "H1",
         }

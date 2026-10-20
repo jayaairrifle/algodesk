@@ -15,7 +15,7 @@
 //| Attach to ONE chart per terminal/account.                        |
 //+------------------------------------------------------------------+
 #property copyright "AlgoDesk"
-#property version   "0.10"
+#property version   "0.14"
 #property description "AlgoDesk MT5 Agent: proteksi rugi harian, telemetri, dan kanal perintah."
 
 #include <Trade/Trade.mqh>
@@ -41,19 +41,25 @@ input int    InpHttpTimeoutMs     = 3000;
 
 //--- market watch
 input group "Market Watch"
-input ENUM_TIMEFRAMES InpSignalTf = PERIOD_H1;
+input ENUM_TIMEFRAMES InpSignalTf = PERIOD_H1;   // Timeframe utama (kolom default)
 input int    InpRsiPeriod         = 14;
 input int    InpAtrPeriod         = 14;
 input double InpRsiBuy            = 55.0;   // RSI minimal untuk sinyal BUY (dengan struktur HH/HL)
 input double InpRsiSell           = 45.0;   // RSI maksimal untuk sinyal SELL (dengan struktur LH/LL)
 input int    InpMaxSymbols        = 20;
+input bool   InpAllTimeframes     = true;   // Hitung RSI/ATR/struktur di semua timeframe M1..MN untuk pilihan di dashboard
 
-#define AGENT_VERSION "0.13"
+#define AGENT_VERSION "0.14"
+
+// Timeframes the dashboard's Market Watch can switch between.
+#define NTF 9
+const ENUM_TIMEFRAMES g_tfs[NTF] = {PERIOD_M1, PERIOD_M5, PERIOD_M15, PERIOD_M30, PERIOD_H1, PERIOD_H4, PERIOD_D1, PERIOD_W1, PERIOD_MN1};
+const string          g_tfNames[NTF] = {"M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1", "MN1"};
 
 CTrade   g_trade;
 long     g_watch[];
 string   g_syms[];
-int      g_rsi[];
+int      g_rsi[];   // [symbol * NTF + timeframe]
 int      g_atr[];
 datetime g_lastTelemetry = 0;
 datetime g_lastPoll      = 0;
@@ -273,18 +279,32 @@ void ReleaseHandles()
    ArrayResize(g_atr, 0);
   }
 
+// InpSignalTf as one of g_tfs (PERIOD_CURRENT resolves to the chart's timeframe; others fall back to H1).
+ENUM_TIMEFRAMES SignalTf()
+  {
+   ENUM_TIMEFRAMES tf = (InpSignalTf == PERIOD_CURRENT) ? (ENUM_TIMEFRAMES)Period() : InpSignalTf;
+   for(int k = 0; k < NTF; k++)
+      if(g_tfs[k] == tf)
+         return tf;
+   return PERIOD_H1;
+  }
+
 void BuildSymbols()
   {
    ReleaseHandles();
    int total = MathMin(SymbolsTotal(true), InpMaxSymbols);
    ArrayResize(g_syms, total);
-   ArrayResize(g_rsi, total);
-   ArrayResize(g_atr, total);
+   ArrayResize(g_rsi, total * NTF);
+   ArrayResize(g_atr, total * NTF);
    for(int i = 0; i < total; i++)
      {
       g_syms[i] = SymbolName(i, true);
-      g_rsi[i]  = iRSI(g_syms[i], InpSignalTf, InpRsiPeriod, PRICE_CLOSE);
-      g_atr[i]  = iATR(g_syms[i], InpSignalTf, InpAtrPeriod);
+      for(int k = 0; k < NTF; k++)
+        {
+         bool on = InpAllTimeframes || g_tfs[k] == SignalTf();
+         g_rsi[i * NTF + k] = on ? iRSI(g_syms[i], g_tfs[k], InpRsiPeriod, PRICE_CLOSE) : INVALID_HANDLE;
+         g_atr[i * NTF + k] = on ? iATR(g_syms[i], g_tfs[k], InpAtrPeriod) : INVALID_HANDLE;
+        }
      }
   }
 
@@ -315,13 +335,13 @@ double LastValue(const int handle)
   }
 
 // "bull" = higher high + higher low, "bear" = lower high + lower low, else "mixed"
-string MarketStructure(const string sym)
+string MarketStructure(const string sym, const ENUM_TIMEFRAMES tf)
   {
    double hi[], lo[];
    ArraySetAsSeries(hi, true);
    ArraySetAsSeries(lo, true);
    int n = 120;
-   if(CopyHigh(sym, InpSignalTf, 0, n, hi) != n || CopyLow(sym, InpSignalTf, 0, n, lo) != n)
+   if(CopyHigh(sym, tf, 0, n, hi) != n || CopyLow(sym, tf, 0, n, lo) != n)
       return "mixed";
    double sh[2], sl[2];
    int nh = 0, nl = 0;
@@ -564,16 +584,34 @@ string SymbolsJson()
       string sym = g_syms[i];
       double point = SymbolInfoDouble(sym, SYMBOL_POINT);
       int d = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
-      double rsi = LastValue(g_rsi[i]);
-      double atr = LastValue(g_atr[i]);
-      double atrPts = (atr != EMPTY_VALUE && point > 0) ? atr / point : EMPTY_VALUE;
-      string st = MarketStructure(sym);
-      string sig = "none";
-      if(rsi != EMPTY_VALUE)
+      // per timeframe: {"M1":{"rsi":..,"atr_points":..,"structure":..,"signal":..},...}
+      string tfs = "{", main = "";
+      int nt = 0;
+      for(int k = 0; k < NTF; k++)
         {
-         if(st == "bull" && rsi >= InpRsiBuy) sig = "BUY";
-         else if(st == "bear" && rsi <= InpRsiSell) sig = "SELL";
+         int h = i * NTF + k;
+         if(g_rsi[h] == INVALID_HANDLE && g_atr[h] == INVALID_HANDLE)
+            continue;
+         double rsi = LastValue(g_rsi[h]);
+         double atr = LastValue(g_atr[h]);
+         double atrPts = (atr != EMPTY_VALUE && point > 0) ? atr / point : EMPTY_VALUE;
+         string st = MarketStructure(sym, g_tfs[k]);
+         string sig = "none";
+         if(rsi != EMPTY_VALUE)
+           {
+            if(st == "bull" && rsi >= InpRsiBuy) sig = "BUY";
+            else if(st == "bear" && rsi <= InpRsiSell) sig = "SELL";
+           }
+         string fields = "\"rsi\":" + N(rsi, 1) + ",\"atr_points\":" + N(atrPts, 1)
+                         + ",\"structure\":" + J(st) + ",\"signal\":" + J(sig);
+         if(g_tfs[k] == SignalTf())
+            main = fields;
+         if(nt++ > 0) tfs += ",";
+         tfs += J(g_tfNames[k]) + ":{" + fields + "}";
         }
+      tfs += "}";
+      if(main == "")
+         main = "\"rsi\":null,\"atr_points\":null,\"structure\":\"mixed\",\"signal\":\"none\"";
       if(i > 0) s += ",";
       s += "{\"symbol\":" + J(sym)
            + ",\"digits\":" + IntegerToString(d)
@@ -581,10 +619,8 @@ string SymbolsJson()
            + ",\"ask\":" + N(SymbolInfoDouble(sym, SYMBOL_ASK), d)
            + ",\"day_open\":" + N(iOpen(sym, PERIOD_D1, 0), d)
            + ",\"spread\":" + IntegerToString(SymbolInfoInteger(sym, SYMBOL_SPREAD))
-           + ",\"rsi\":" + N(rsi, 1)
-           + ",\"atr_points\":" + N(atrPts, 1)
-           + ",\"structure\":" + J(st)
-           + ",\"signal\":" + J(sig)
+           + "," + main
+           + ",\"tf\":" + tfs
            + "}";
      }
    return s + "]";
@@ -658,7 +694,7 @@ void SendTelemetry()
       + "}"
       + ",\"positions\":" + PositionsJson()
       + ",\"symbols\":" + SymbolsJson()
-      + ",\"timeframe\":" + J(StringSubstr(EnumToString(InpSignalTf), 7))
+      + ",\"timeframe\":" + J(StringSubstr(EnumToString(SignalTf()), 7))
       + "}";
    string resp;
    Http("POST", "/agent/telemetry", body, resp);
