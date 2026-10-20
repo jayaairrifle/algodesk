@@ -405,6 +405,24 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
             out = [t for t in out if t["magic"] == magic]
         return {"start": start, "trades": out[::-1][:1000]}
 
+    @app.get(API + "/balance")
+    def balance_history(days: int = 7, agent_id: str | None = None, user=Depends(current_user)):
+        """Balance after every deal of the period (trades, swaps, deposits, withdrawals), rebuilt
+        backwards from today's balance. Times are broker server time."""
+        login, day_start, bal = current_account(agent_id)
+        if login is None or bal is None:
+            return {"start": None, "points": []}
+        start = day_start - (max(1, min(days, 90)) - 1) * 86400
+        ds = account_deals(login, start)
+        net = [d["profit"] + d["swap"] + d["commission"] + d["fee"] for d in ds]
+        b = bal - sum(net)
+        points = [[start, round(b, 2)]]
+        for d, v in zip(ds, net):
+            if v:
+                b += v
+                points.append([d["time"], round(b, 2)])
+        return {"start": start, "points": points}
+
     @app.get(API + "/deals")
     def deals(limit: int = 200, agent_id: str | None = None, user=Depends(current_user)):
         """Today's deals, newest first: the trade events of the EA log."""

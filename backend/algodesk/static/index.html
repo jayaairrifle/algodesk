@@ -487,11 +487,13 @@ td.c, th.c { text-align: center; }
     const cur = viewCur(), n = fmtNum(v, sign), s = /^[−+]/.test(n) ? n[0] : '', body = s ? n.slice(1) : n;
     return s + (cur === 'USD' ? '$' + body : cur === 'IDR' ? 'Rp ' + body : body + ' ' + cur);
   };
-  const fmtAxis = v => {
+  // step = distance between axis ticks; enough decimals are shown that neighbouring ticks differ.
+  const fmtAxis = (v, step = 0) => {
     const cur = viewCur(), x = conv(v), a = Math.abs(x);
-    const n = cur === 'IDR' ? (a >= 1e9 ? (x / 1e9).toFixed(2) + 'M' : (x / 1e6).toFixed(1) + 'jt')
-      : a >= 1e6 ? (x / 1e6).toFixed(2) + 'M' : a >= 1e4 ? (x / 1e3).toFixed(1) + 'k' : x.toFixed(0);
-    return n;
+    const [u, sfx, dflt] = cur === 'IDR' ? (a >= 1e9 ? [1e9, 'M', 2] : [1e6, 'jt', 1])
+      : a >= 1e6 ? [1e6, 'M', 2] : a >= 1e4 ? [1e3, 'k', 1] : [1, '', 0];
+    const s = Math.abs(conv(step)) / u, dec = s > 0 ? Math.min(4, Math.max(dflt, Math.ceil(-Math.log10(s) - 1e-9))) : dflt;
+    return (x / u).toFixed(dec) + sfx;
   };
   const fmtPx = (v, d = 2) => v == null ? '–' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const pct = (v, sign = true) => v == null || !isFinite(v) ? '–' : (v < 0 ? '−' : sign && v > 0 ? '+' : '') + Math.abs(v).toFixed(2) + '%';
@@ -660,6 +662,14 @@ td.c, th.c { text-align: center; }
     let pts = S.eq.map(s => [s.ts, s.equity, s.balance]);
     const t = tel();
     if (t && S.st.agent.received_at) pts.push([S.st.agent.received_at, t.account.equity, t.account.balance]);
+    // Balance tab: the step line rebuilt from the deal history covers the whole period, not only the
+    // minutes the dashboard has been sampling (balance only moves when a deal happens).
+    if (tab === 'balance' && t && S.bal?.points?.length) {
+      const off = srvOffset(), bp = S.bal.points.map(p => [p[0] - off, p[1]]), steps = [];
+      bp.forEach((p, i) => { if (i) steps.push([p[0], bp[i - 1][1]]); steps.push(p); });
+      steps.push([S.st.agent.received_at || Date.now() / 1000, t.account.balance]);
+      pts = steps.map(p => [p[0], p[1], p[1]]);
+    }
     const head = `<div class="ph"><h2>Equity Curve</h2><div class="tools"><div class="seg">${[['equity', 'Equity'], ['balance', 'Balance'], ['dd', 'Drawdown']].map(([k, l]) => `<button data-eq="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div></div></div>`;
     if (pts.length < 2) return `<section class="card">${head}<div class="empty">Grafik muncul setelah beberapa menit telemetri terkumpul.</div></section>`;
     let series;
@@ -675,7 +685,7 @@ td.c, th.c { text-align: center; }
     const xl = [0, .2, .4, .6, .8, 1].map(f => { const ts = t0 + (t1 - t0) * f; return (t1 - t0) > 2 * 86400 ? new Date(ts * 1000).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); });
     const last = main[main.length - 1];
     return `<section class="card">${head}
-      <div class="chart">${ticks.map(v => `<span class="yl" style="top:${(4 + y(v) / H * 190).toFixed(1)}px">${fmtAxis(v)}</span>`).join('')}
+      <div class="chart">${ticks.map(v => `<span class="yl" style="top:${(4 + y(v) / H * 190).toFixed(1)}px">${fmtAxis(v, ticks[1] - ticks[0])}</span>`).join('')}
         <svg class="plot" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Grafik ${tab}">
           <defs><linearGradient id="eqg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".3"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
           ${ticks.map(v => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('')}
@@ -1048,7 +1058,7 @@ td.c, th.c { text-align: center; }
   const loadUsers = async () => { if (can('admin')) S.users = (await api('/users')).users; };
   async function loadStats() {
     const [day, per, tr, dl] = await Promise.all([
-      api('/eas/stats?period=day'), api('/eas/stats?period=' + S.perfTab), api('/trades?days=' + S.days), api('/deals?limit=300')]);
+      api('/eas/stats?period=day'), api('/eas/stats?period=' + S.perfTab), api('/trades?days=' + S.days), api('/deals?limit=300'), api('/balance?days=' + S.days).then(r => { S.bal = r; })]);
     S.statsDay = day.eas; S.statsPer = per.eas; S.perStart = per.start; S.trades = tr.trades; S.tradesStart = tr.start; S.deals = dl.deals; S.dealsStart = dl.start;
     if (S.view === 'history') S.histTrades = (await api('/trades?days=' + S.histDays)).trades;
   }
