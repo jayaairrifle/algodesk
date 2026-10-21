@@ -887,20 +887,25 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   }
   function riskCard() {
     const t = tel(), a = t.account, p = t.protection || {}, pl = t.pl;
-    const daily = pl ? pl.realized + pl.floating : p.baseline ? a.equity - p.baseline : null;
-    // the drawdown the agent enforces: baseline minus current equity
-    const used = p.baseline ? (p.loss_used ?? Math.max(0, -Math.min(0, daily ?? 0))) / p.baseline * 100 : 0;
+    // What the agent enforces: equity against the daily baseline (start-of-day equity, or the equity at the
+    // last "Buka blokir"). Floating loss already open at the baseline is in the baseline, so it is not counted again.
+    const daily = p.baseline ? a.equity - p.baseline : pl ? pl.realized + pl.floating : null;
+    const used = p.baseline ? Math.max(0, p.baseline - a.equity) / p.baseline * 100 : 0;
+    const lim = p.enabled === false ? null : p.limit_pct || null, fill = lim ? Math.min(100, used / lim * 100) : 0;
+    const remain = p.limit_amount ? Math.max(0, p.limit_amount - Math.max(0, p.baseline - a.equity)) : null;
     const exposure = sum(t.positions || [], x => x.volume), floating = sum(t.positions || [], x => x.profit);
-    const ml = a.margin_level, mlState = !ml ? ['–', ''] : ml < (a.margin_call || 100) * 1.5 ? ['Danger', 'r'] : ml < 300 ? ['Watch', 'y'] : ['Safe', 'g'];
+    const ml = a.margin_level, mlState = !ml ? (a.margin === 0 ? ['Tanpa margin', 'g'] : ['–', '']) : ml < (a.margin_call || 100) * 1.5 ? ['Danger', 'r'] : ml < 300 ? ['Watch', 'y'] : ['Safe', 'g'];
     return `<section class="card"><div class="ph"><h2>Risk Center</h2><span class="muted" style="font-size:12.5px">Daily Baseline (${p.day_start ? srvDay(p.day_start) : '–'})</span>
       <span class="chip ${p.entry_state === 'blocked' ? 'r' : ['paused', 'session'].includes(p.entry_state) ? 'y' : 'g'}">${{ blocked: 'Blocked', paused: 'Paused', session: 'Di luar sesi' }[p.entry_state] || 'Valid'}</span></div>
       <div class="rgrid"><div><small>Baseline Equity</small><b>${fmtNum(p.baseline)}</b></div><div><small>Current Equity</small><b>${fmtNum(a.equity)}</b></div>
-        <div><small>Daily P/L</small><b class="${cls(daily)}">${fmtNum(daily, true)}</b> <span class="num ${cls(daily)}" style="font-size:12px">(${p.baseline ? pct(daily / p.baseline * 100) : '–'})</span></div></div>
-      <div style="padding:0 16px 12px"><div class="bar ${used >= (p.limit_pct || 3) ? 'crit' : used >= (p.limit_pct || 3) * .66 ? 'warn' : ''}"><i style="width:${Math.min(100, used / (p.limit_pct || 3) * 100).toFixed(1)}%"></i></div>
-        <div class="prow" style="margin-top:6px"><span>Daily Drawdown ${used.toFixed(2)}%</span><span>Limit: ${p.enabled === false ? 'proteksi mati' : p.limit_pct == null ? '–' : p.limit_pct.toFixed(2) + '% (' + fmtNum(p.limit_amount) + ')'}</span></div></div>
-      <div class="rmini"><div><small>Margin Level</small><b class="${mlState[1] === 'g' ? 'up' : mlState[1] === 'r' ? 'down' : 'warn'}">${ml ? ml.toFixed(2) + '%' : '–'}</b> <span class="chip ${mlState[1]}" style="font-size:11px;padding:1px 6px">${mlState[0]}</span></div>
+        <div><small>Daily P/L (vs baseline)</small><b class="${cls(daily)}">${fmtNum(daily, true)}</b> <span class="num ${cls(daily)}" style="font-size:12px">(${p.baseline ? pct(daily / p.baseline * 100) : '–'})</span>
+          ${pl ? `<small class="num" style="margin-top:2px">Realized hari ini ${fmtNum(pl.realized, true)} · Floating ${fmtNum(pl.floating, true)}</small>` : ''}</div></div>
+      <div style="padding:0 16px 12px"><div class="bar ${!lim ? '' : fill >= 100 ? 'crit' : fill >= 66 ? 'warn' : ''}" role="progressbar" aria-label="Pemakaian batas rugi harian" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${fill.toFixed(0)}"><i style="width:${fill.toFixed(1)}%"></i></div>
+        <div class="prow" style="margin-top:6px"><span>Daily Drawdown <b class="num ${used > 0 ? 'down' : ''}">${used.toFixed(2)}%</b>${lim ? ` · ${fill.toFixed(0)}% dari batas` : ''}${used === 0 && daily > 0 ? ` <span class="muted">(equity ${pct(daily / p.baseline * 100)} di atas baseline)</span>` : ''}</span>
+          <span>Limit: ${p.enabled === false ? 'proteksi mati' : p.limit_pct == null ? '–' : p.limit_pct.toFixed(2) + '% (' + fmtNum(p.limit_amount) + ')'}</span></div></div>
+      <div class="rmini"><div><small>Margin Level</small><b class="${mlState[1] === 'g' ? 'up' : mlState[1] === 'r' ? 'down' : 'warn'}">${ml ? ml.toFixed(2) + '%' : a.margin === 0 ? '' : '–'}</b> <span class="chip ${mlState[1]}" style="font-size:11px;padding:1px 6px">${mlState[0]}</span></div>
         <div><small>Total Exposure</small><b>${exposure.toFixed(2)} lot</b></div><div><small>Floating P/L</small><b class="${cls(floating)}">${fmtNum(floating, true)}</b></div>
-        <div><small>Sisa batas harian</small><b>${fmtNum(Math.max(0, (p.limit_amount || 0) - (p.loss_used || 0)))}</b></div>
+        <div><small>Sisa batas harian</small><b>${remain == null ? '–' : fmtNum(remain)}</b></div>
         <div><small>Margin Call Level</small><b>${a.margin_call != null ? a.margin_call.toFixed(2) + '%' : '–'}</b></div><div><small>Stop Out Level</small><b>${a.stop_out != null ? a.stop_out.toFixed(2) + '%' : '–'}</b></div></div></section>`;
   }
 
@@ -1161,7 +1166,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     const toUsd = v => v == null || !usdPer(acctCur()) ? null : v * usdPer(acctCur());
     const pl = tel()?.pl;
     const rows = a ? [['Balance', a.balance], ['Equity', a.equity], ['Free Margin', a.free_margin], ['Margin', a.margin],
-      ['Floating P/L', pl?.floating ?? a.equity - a.balance], ['P/L hari ini', pl ? pl.realized + pl.floating : null]] : [];
+      ['Floating P/L', pl?.floating ?? a.equity - a.balance], ['P/L hari ini', tel()?.protection?.baseline ? a.equity - tel().protection.baseline : pl ? pl.realized + pl.floating : null]] : [];
     const rateCard = `<section class="card fxcard"><div class="ph"><h2>1 USD dalam Rupiah</h2>${live ? '<span class="chip g"><span class="dot g"></span>Live</span>' : rate ? '<span class="chip y">Harian</span>' : ''}</div>
       <div style="padding:0 16px 12px"><div class="fxbig">${rate ? rp(rate) : '–'}</div>
         <div class="muted" style="margin-top:4px">${ch == null ? '' : `<span class="${cls(ch)}">${pct(ch)}</span> dalam 24 jam · `}Sumber: ${esc(src)}${upd ? ' · diperbarui ' + upd : ''}</div></div>
