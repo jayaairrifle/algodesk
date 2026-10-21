@@ -26,6 +26,7 @@ COMMAND_TTL = 120             # unacknowledged commands expire after this many s
 OFFLINE_AFTER = 15            # agent shown offline when telemetry is older than this
 SAMPLE_EVERY = 30             # equity chart resolution in seconds
 SAMPLE_KEEP = 8 * 86400
+MAX_RANGE_DAYS = 366          # longest custom period of the trade and balance history
 MAX_BODY = 512 * 1024
 DEALS_PER_POST = 500
 DEAL_KEEP = 100 * 86400       # deal history kept per account
@@ -389,16 +390,19 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
         }
 
     @app.get(API + "/equity")
-    def equity(hours: float = 24, agent_id: str | None = None, user=Depends(current_user)):
+    def equity(hours: float = 24, since: int | None = None, until: int | None = None,
+               agent_id: str | None = None, user=Depends(current_user)):
+        """Equity samples of the last `hours`, or of [since, until) (real epoch) for a custom period."""
         chosen = pick_agent(agent_id)
         if chosen is None:
             return {"samples": []}
-        since = time.time() - max(1.0, min(hours, 192.0)) * 3600
+        end = until if until is not None else time.time() + 60
+        since = since if since is not None else time.time() - max(1.0, min(hours, 192.0)) * 3600
         # Only the account the terminal is logged in to now; samples of a previous account are left out.
         tel = db.one("SELECT payload FROM telemetry_latest WHERE agent_id = ?", (chosen,))
         login = (json.loads(tel["payload"]).get("account") or {}).get("login") if tel else None
-        rows = db.all("SELECT ts, equity, balance FROM equity_samples WHERE agent_id = ? AND ts >= ? AND login IS ? ORDER BY ts",
-                      (chosen, since, login))
+        rows = db.all("SELECT ts, equity, balance FROM equity_samples WHERE agent_id = ? AND ts >= ? AND ts < ? AND login IS ? ORDER BY ts",
+                      (chosen, since, end, login))
         return {"samples": [dict(r) for r in rows]}
 
     # ------------------------------------------------------------------ deal history & EA statistics
@@ -428,34 +432,50 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
         trades = closed_trades(account_deals(login, start - 30 * 86400), start)
         return {"period": period, "start": start, "eas": ea_stats(trades, balance)}
 
+    def period(days: int, start: int | None, end: int | None, day_start: int):
+        """[start, end) in server time: the last `days` trading days, or a custom range of whole days
+        (`start` and `end` are day starts, `end` included)."""
+        if start is None and end is None:
+            return day_start - (max(1, min(days, 90)) - 1) * 86400, None
+        if start is None or end is None:
+            raise HTTPException(422, "start and end go together")
+        start, end = start // 86400 * 86400, end // 86400 * 86400 + 86400
+        if start >= end or end - start > MAX_RANGE_DAYS * 86400:
+            raise HTTPException(422, f"range must be 1..{MAX_RANGE_DAYS} days")
+        return start, end
+
     @app.get(API + "/trades")
-    def trades(days: int = 7, magic: int | None = None, agent_id: str | None = None, user=Depends(current_user)):
+    def trades(days: int = 7, start: int | None = None, end: int | None = None, magic: int | None = None,
+               agent_id: str | None = None, user=Depends(current_user)):
         login, day_start, _ = current_account(agent_id)
         if login is None:
             return {"trades": []}
-        start = day_start - (max(1, min(days, 90)) - 1) * 86400
-        out = closed_trades(account_deals(login, start - 30 * 86400), start)
+        start, end = period(days, start, end, day_start)
+        out = closed_trades(account_deals(login, start - 30 * 86400), start, end)
         if magic is not None:
             out = [t for t in out if t["magic"] == magic]
-        return {"start": start, "trades": out[::-1][:1000]}
+        return {"start": start, "end": end, "trades": out[::-1][:1000]}
 
     @app.get(API + "/balance")
-    def balance_history(days: int = 7, agent_id: str | None = None, user=Depends(current_user)):
+    def balance_history(days: int = 7, start: int | None = None, end: int | None = None,
+                        agent_id: str | None = None, user=Depends(current_user)):
         """Balance after every deal of the period (trades, swaps, deposits, withdrawals), rebuilt
         backwards from today's balance. Times are broker server time."""
         login, day_start, bal = current_account(agent_id)
         if login is None or bal is None:
             return {"start": None, "points": []}
-        start = day_start - (max(1, min(days, 90)) - 1) * 86400
+        start, end = period(days, start, end, day_start)
         ds = account_deals(login, start)
         net = [d["profit"] + d["swap"] + d["commission"] + d["fee"] for d in ds]
         b = bal - sum(net)
         points = [[start, round(b, 2)]]
         for d, v in zip(ds, net):
+            if end is not None and d["time"] >= end:
+                break
             if v:
                 b += v
                 points.append([d["time"], round(b, 2)])
-        return {"start": start, "points": points}
+        return {"start": start, "end": end, "points": points, "end_balance": round(b, 2)}
 
     @app.get(API + "/deals")
     def deals(limit: int = 200, agent_id: str | None = None, user=Depends(current_user)):

@@ -184,6 +184,8 @@ td.c, th.c { text-align: center; }
 .fbar .f span { color: var(--fg-2); font-size: 12.5px; }
 .fbar .f select { border: 0; border-left: 1px solid var(--line); border-radius: 0 8px 8px 0; background: var(--panel-2); min-width: 120px; }
 .fbar .range { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; color: var(--fg-2); }
+.fbar .range.custom { padding: 3px 8px 3px 12px; gap: 6px; }
+.fbar .range input[type=date] { border: 0; background: transparent; color: var(--fg); padding: 4px 2px; font-size: 13px; color-scheme: light dark; }
 .fbar .live { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--fg-2); font-size: 12.5px; }
 .fbar .live b { color: var(--up); font-weight: 500; }
 
@@ -518,11 +520,11 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   const CMD_LABEL = { pause_entry: 'Jeda entry', resume_entry: 'Lanjutkan entry', disable_magic: 'Nonaktifkan EA', enable_magic: 'Aktifkan EA', set_limit: 'Ubah batas rugi',
     risk_set: 'Ubah proteksi rugi', risk_reset: 'Buka blokir', session_set: 'Ubah filter sesi', sr_set: 'Ubah StopReverse', sr_close: 'Tutup StopReverse' };
   const STATUS_LABEL = { pending: 'Menunggu agent', acked: 'Dikonfirmasi agent', failed: 'Ditolak agent', expired: 'Kedaluwarsa' };
-  const PERIODS = { 1: 'Hari ini', 7: '7 Hari', 30: '30 Hari' };
+  const PERIODS = { 1: 'Hari ini', 7: '7 Hari', 30: '30 Hari', custom: 'Custom' };
   const S = {
     me: null, st: null, fetchedAt: 0, eq: [], cmds: [], users: [], view: 'overview', confirm: false, pending: null,
     hist: {}, timers: [], lastUpdate: null,
-    days: 7, sym: 'ALL', eqTab: 'equity', dpTab: 'pl', trades: [], tradesStart: null,
+    days: 7, cFrom: null, cTo: null, sym: 'ALL', eqTab: 'equity', dpTab: 'pl', trades: [], tradesStart: null, tradesEnd: null,
     statsDay: [], perfTab: 'day', statsPer: [], perStart: null, deals: [], dealsStart: null,
     logEa: '', logSym: '', logEv: '', histSym: 'ALL', histQ: '', histDays: 7, histTrades: [], basketSym: 'ALL',
     edit: null, detail: null, detailTrades: [],
@@ -545,6 +547,15 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   const srvHms = ts => fmtSrv(ts, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const srvDay = ts => fmtSrv(ts, { day: '2-digit', month: 'short' });
   const srvDayTime = ts => fmtSrv(ts, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  // Overview period: the last N trading days, or a custom range of whole server days ('YYYY-MM-DD', both included).
+  const isCustom = () => S.days === 'custom';
+  const dayTs = d => Date.parse(d + 'T00:00:00Z') / 1000;
+  const isoDay = ts => new Date(ts * 1000).toISOString().slice(0, 10);
+  const srvToday = () => isoDay(tel()?.server_time || (Date.now() / 1000 + srvOffset()));
+  const periodQ = () => isCustom() ? `start=${dayTs(S.cFrom)}&end=${dayTs(S.cTo)}` : 'days=' + S.days;
+  const periodLabel = () => isCustom() ? (S.cFrom === S.cTo ? srvDay(dayTs(S.cFrom)) : srvDay(dayTs(S.cFrom)) + ' – ' + srvDay(dayTs(S.cTo))) : PERIODS[S.days];
+  // a custom range that ends before today shows no live values at its end
+  const pastPeriod = () => isCustom() && S.tradesEnd != null && S.tradesEnd <= (tel()?.server_time || 0);
   const dur = s => { s = Math.max(0, Math.round(s)); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d}h ${h}j` : h ? `${h}j ${m}m` : `${m}m`; };
 
   // ---------- currency ----------
@@ -741,8 +752,9 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     const now = tel()?.server_time;
     return `<section class="card fbar">
       <label class="f"><span>Symbol</span><select id="fSym">${['ALL', ...syms].map(s => `<option value="${s}" ${s === S.sym ? 'selected' : ''}>${s === 'ALL' ? 'ALL' + (syms.length ? ' (' + syms.join(', ') + ')' : '') : esc(s)}</option>`).join('')}</select></label>
-      <label class="f"><span>Periode</span><select id="fDays">${Object.entries(PERIODS).map(([d, l]) => `<option value="${d}" ${+d === S.days ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-      <span class="range">${icon('i-cal')}<span class="mono">${S.tradesStart ? srvDay(S.tradesStart) : '–'}</span>${icon('i-arrow')}<span class="mono">${now ? srvDay(now) : '–'}</span></span>
+      <label class="f"><span>Periode</span><select id="fDays">${Object.entries(PERIODS).map(([d, l]) => `<option value="${d}" ${String(S.days) === d ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      ${isCustom() ? `<span class="range custom">${icon('i-cal')}<input type="date" id="fFrom" class="mono" value="${S.cFrom}" max="${S.cTo}" aria-label="Dari tanggal">${icon('i-arrow')}<input type="date" id="fTo" class="mono" value="${S.cTo}" min="${S.cFrom}" max="${srvToday()}" aria-label="Sampai tanggal"></span>`
+        : `<span class="range">${icon('i-cal')}<span class="mono">${S.tradesStart ? srvDay(S.tradesStart) : '–'}</span>${icon('i-arrow')}<span class="mono">${now ? srvDay(now) : '–'}</span></span>`}
       <button class="btn primary" data-act="refresh">${icon('i-sync')}Refresh</button>
       <span class="live"><span class="dot ${S.st?.agent?.online ? 'g' : 'r'}"></span><b class="${S.st?.agent?.online ? '' : 'down'}">${S.st?.agent?.online ? 'Live Update' : 'Agent offline'}</b>Last update: <span class="mono" id="lastUpd">${S.lastUpdate ? new Date(S.lastUpdate).toLocaleTimeString('id-ID') : '–'}</span></span>
     </section>`;
@@ -751,7 +763,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     const k = tradeKpis(ovTrades());
     return `<div class="kpis">
       <div class="card kpi"><div class="lbl">Net P/L ${icon('i-info')}</div><div class="val ${cls(k.net)}">${fmtNum(k.net, true)}<small>${viewCur()}</small></div>
-        <div class="sub"><span class="${cls(k.net)}">${pct(k.netPct)}</span><span>${PERIODS[S.days]}</span></div></div>
+        <div class="sub"><span class="${cls(k.net)}">${pct(k.netPct)}</span><span>${periodLabel()}</span></div></div>
       <div class="card kpi"><div class="lbl">Win Rate</div><div class="val">${k.wr == null ? '–' : k.wr.toFixed(2) + '%'}</div><div class="vis">${ring(k.wr || 0)}</div>
         <div class="sub"><span>${k.wins} Win / ${k.losses} Loss</span></div></div>
       <div class="card kpi"><div class="lbl">Profit Factor ${icon('i-info')}</div><div class="val ${k.pf == null ? '' : k.pf >= 1 ? 'up' : 'down'}">${k.pf == null ? (k.gp ? '∞' : '–') : k.pf.toFixed(2)}</div><div class="vis">${spark(k.curve, 'var(--up)', 70, 40)}</div>
@@ -768,17 +780,18 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     const tab = S.eqTab;
     let pts = S.eq.map(s => [s.ts, s.equity, s.balance]);
     const t = tel();
-    if (t && S.st.agent.received_at) pts.push([S.st.agent.received_at, t.account.equity, t.account.balance]);
+    if (t && S.st.agent.received_at && !pastPeriod()) pts.push([S.st.agent.received_at, t.account.equity, t.account.balance]);
     // Balance tab: the step line rebuilt from the deal history covers the whole period, not only the
     // minutes the dashboard has been sampling (balance only moves when a deal happens).
     if (tab === 'balance' && t && S.bal?.points?.length) {
       const off = srvOffset(), bp = S.bal.points.map(p => [p[0] - off, p[1]]), steps = [];
       bp.forEach((p, i) => { if (i) steps.push([p[0], bp[i - 1][1]]); steps.push(p); });
-      steps.push([S.st.agent.received_at || Date.now() / 1000, t.account.balance]);
+      if (pastPeriod()) steps.push([S.tradesEnd - off, S.bal.end_balance]);
+      else steps.push([S.st.agent.received_at || Date.now() / 1000, t.account.balance]);
       pts = steps.map(p => [p[0], p[1], p[1]]);
     }
     const head = `<div class="ph"><h2>Equity Curve</h2><div class="tools"><div class="seg">${[['equity', 'Equity'], ['balance', 'Balance'], ['dd', 'Drawdown']].map(([k, l]) => `<button data-eq="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div></div></div>`;
-    if (pts.length < 2) return `<section class="card">${head}<div class="empty">Grafik muncul setelah beberapa menit telemetri terkumpul.</div></section>`;
+    if (pts.length < 2) return `<section class="card">${head}<div class="empty">${isCustom() ? 'Tidak ada data equity di periode ini (equity hanya disimpan 8 hari terakhir). Tab Balance memakai riwayat deal.' : 'Grafik muncul setelah beberapa menit telemetri terkumpul.'}</div></section>`;
     let series;
     if (tab === 'dd') { let pk = -Infinity; series = [pts.map(p => { pk = Math.max(pk, p[1]); return [p[0], p[1] - pk]; })]; }
     else if (tab === 'balance') series = [pts.map(p => [p[0], p[2]])];
@@ -805,7 +818,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       </div></section>`;
   }
   function dailyCard() {
-    const tab = S.dpTab, ts = ovTrades(), start = S.tradesStart, now = tel()?.server_time;
+    const tab = S.dpTab, ts = ovTrades(), start = S.tradesStart, now = S.tradesEnd ? Math.min(S.tradesEnd - 1, tel()?.server_time ?? Infinity) : tel()?.server_time;
     const days = []; if (start && now) for (let d = start; d <= now; d += 86400) days.push(d);
     const val = (d, f) => { const xs = ts.filter(t => t.close_time >= d && t.close_time < d + 86400); return tab === 'pl' ? sum(xs, t => t.net) : tab === 'vol' ? sum(xs, t => t.volume) : xs.length; };
     const vals = days.map(d => val(d));
@@ -1461,14 +1474,19 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     S.st = st; S.fetchedAt = Date.now(); S.lastUpdate = Date.now();
     if (switched) await Promise.all([loadEquity(), loadStats()]);  // another account logged in: drop the old account's data now
   }
-  const loadEquity = async () => { S.eq = (await api('/equity?hours=' + Math.min(192, S.days * 24))).samples; };
+  // equity samples are real epoch, so a custom range of server days is shifted by the server offset
+  const eqQ = () => isCustom() ? `since=${dayTs(S.cFrom) - srvOffset()}&until=${dayTs(S.cTo) + 86400 - srvOffset()}` : 'hours=' + Math.min(192, S.days * 24);
+  const loadEquity = async () => { const q = eqQ(), r = await api('/equity?' + q); if (q === eqQ()) S.eq = r.samples; };
   const loadCmds = async () => { S.cmds = (await api('/commands?limit=100')).commands; };
   const loadFx = async () => { S.fx = await api('/fx' + (S.view === 'fx' ? '?history=1' : '')); S.fxAt = Date.now(); };
   const loadUsers = async () => { if (can('admin')) S.users = (await api('/users')).users; };
   async function loadStats() {
-    const [day, per, tr, dl] = await Promise.all([
-      api('/eas/stats?period=day'), api('/eas/stats?period=' + S.perfTab), api('/trades?days=' + S.days), api('/deals?limit=300'), api('/balance?days=' + S.days).then(r => { S.bal = r; })]);
-    S.statsDay = day.eas; S.statsPer = per.eas; S.perStart = per.start; S.trades = tr.trades; S.tradesStart = tr.start; S.deals = dl.deals; S.dealsStart = dl.start;
+    const q = periodQ();
+    const [day, per, tr, dl, bal] = await Promise.all([
+      api('/eas/stats?period=day'), api('/eas/stats?period=' + S.perfTab), api('/trades?' + q), api('/deals?limit=300'), api('/balance?' + q)]);
+    S.statsDay = day.eas; S.statsPer = per.eas; S.perStart = per.start; S.deals = dl.deals; S.dealsStart = dl.start;
+    // a poll that started before the period changed must not overwrite the new period's trades
+    if (q === periodQ()) { S.trades = tr.trades; S.tradesStart = tr.start; S.tradesEnd = tr.end ?? null; S.bal = bal; }
     if (S.view === 'history') S.histTrades = (await api('/trades?days=' + S.histDays)).trades;
     if (S.view === 'session') await loadSess();
   }
@@ -1617,7 +1635,20 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     else if (id === 'lEa') S.logEa = el.value;
     else if (id === 'lSym') S.logSym = el.value;
     else if (id === 'lEv') S.logEv = el.value;
-    else if (id === 'fDays') { S.days = +el.value; el.blur(); try { await Promise.all([loadStats(), loadEquity()]); } catch (err) { toast(err.message, 'err'); } }
+    else if (id === 'fDays' || id === 'fFrom' || id === 'fTo') {
+      if (id === 'fDays') {
+        S.days = el.value === 'custom' ? 'custom' : +el.value;
+        if (isCustom() && !S.cFrom) { S.cTo = srvToday(); S.cFrom = isoDay(dayTs(S.cTo) - 29 * 86400); }
+      } else {
+        if (!/^\d{4}-\d\d-\d\d$/.test(el.value) || +el.value.slice(0, 4) < 2000) return;  // still typing
+        let a = id === 'fFrom' ? el.value : S.cFrom, b = id === 'fTo' ? el.value : S.cTo;
+        if (b > srvToday()) b = srvToday();
+        if (a > b) [a, b] = [b, a];
+        if (dayTs(b) - dayTs(a) > 365 * 86400) { toast('Periode custom maksimal 366 hari.', 'err'); render(); return; }
+        S.cFrom = a; S.cTo = b;
+      }
+      el.blur(); try { await Promise.all([loadStats(), loadEquity()]); } catch (err) { toast(err.message, 'err'); }
+    }
     else if (id === 'hDays') { S.histDays = +el.value; el.blur(); try { S.histTrades = (await api('/trades?days=' + S.histDays)).trades; } catch (err) { toast(err.message, 'err'); } }
     else if (el.closest('[data-urole]')) { const r = el.closest('[data-urole]'); try { await api('/users/' + r.dataset.urole, { method: 'PATCH', body: { role: r.value } }); await loadUsers(); toast('Peran diperbarui. Pengguna perlu login ulang.'); } catch (err) { toast(err.message, 'err'); } }
     else return;

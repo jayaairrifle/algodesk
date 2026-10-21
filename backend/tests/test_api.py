@@ -318,3 +318,32 @@ def test_risk_and_session_commands_are_checked(app):
         assert admin.post("/api/commands", json=body).status_code == 422, body
     assert admin.post("/api/commands", json={"type": "risk_set", "enabled": False}).status_code == 200
     assert admin.post("/api/commands", json={"type": "session_set", "allow": "asia,london,newyork,overlap"}).status_code == 200
+
+
+def test_custom_period_limits_trades_and_balance(app):
+    day = 1_800_000_000 // 86400 * 86400
+    tel = TELEMETRY | {"server_time": day + 3600, "protection": TELEMETRY["protection"] | {"day_start": day}}
+    agent = TestClient(app)
+    agent_call(agent, "POST", "/agent/telemetry", tel)
+    deals = [
+        deal(1, 10, day - 86400 * 5, "BUY", "IN"),
+        deal(2, 10, day - 86400 * 5 + 60, "SELL", "OUT", net=10.0),
+        deal(3, 11, day - 86400 * 3, "BUY", "IN"),
+        deal(4, 11, day - 86400 * 3 + 60, "SELL", "OUT", net=-4.0),
+        deal(5, 12, day + 100, "BUY", "IN"),
+        deal(6, 12, day + 160, "SELL", "OUT", net=20.0),
+    ]
+    agent_call(agent, "POST", "/agent/deals", {"login": 884921, "deals": deals})
+    viewer = login(app, "viewer")
+    # 6 to 3 days ago, both days included: today's trade stays out
+    q = f"start={day - 86400 * 6}&end={day - 86400 * 3}"
+    out = viewer.get("/api/trades?" + q).json()
+    assert (out["start"], out["end"]) == (day - 86400 * 6, day - 86400 * 2)
+    assert [t["position_id"] for t in out["trades"]] == [11, 10]
+    bal = viewer.get("/api/balance?" + q).json()
+    # 10246.38 now = 10220.38 six days ago + 10 - 4 (+ 20 today, after the range)
+    assert bal["points"] == [[day - 86400 * 6, 10220.38], [day - 86400 * 5 + 60, 10230.38], [day - 86400 * 3 + 60, 10226.38]]
+    assert bal["end_balance"] == 10226.38
+    assert viewer.get(f"/api/trades?start={day}").status_code == 422
+    assert viewer.get(f"/api/trades?start={day}&end={day - 86400}").status_code == 422
+    assert viewer.get(f"/api/trades?start={day - 86400 * 400}&end={day}").status_code == 422
