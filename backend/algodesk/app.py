@@ -153,7 +153,8 @@ def create_app(db_path: str | None = None, cookie_secure: bool | None = None) ->
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+            "default-src 'self'; script-src 'self' 'unsafe-inline' https://s3.tradingview.com; "
+            "frame-src https://www.tradingview-widget.com https://s.tradingview.com https://www.tradingview.com; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'"
         )
