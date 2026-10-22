@@ -139,6 +139,13 @@ main { padding: 18px 20px 24px; min-width: 0; display: flex; flex-direction: col
 .g-ov2 { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
 .g-ea2 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 .g-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tvcard .ph select { min-width: 150px; }
+.tvcard .ph .px { color: var(--fg-2); font-size: 12.5px; }
+.tvbox { height: 560px; border-top: 1px solid var(--line-soft); }
+.tvbox .tradingview-widget-container { height: 100%; display: flex; flex-direction: column; }
+.tvbox .tradingview-widget-container__widget { flex: 1; min-height: 0; }
+.tvbox iframe { display: block; width: 100% !important; height: 100% !important; border: 0; }
+.tvnote { color: var(--fg-2); font-size: 12.5px; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 7px; cursor: pointer; color: var(--fg); white-space: nowrap; font-size: 13px; font-weight: 500; }
 .btn:hover { border-color: var(--muted); }
@@ -394,6 +401,8 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   .nav { width: auto; white-space: nowrap; padding: 8px 12px; }
   .symbox, .ver { display: none; }
   main { padding: 14px 16px 20px; }
+  .tvbox { height: 420px; }
+  .seg.livelay { display: none; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .rmini { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -423,6 +432,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
 <svg style="position:absolute;width:0;height:0" aria-hidden="true">
   <defs>
     <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-live" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 17l5-6 4 4 5-8 4 5"/><circle cx="19" cy="5" r="2" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-candle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3v18h18"/><rect x="7" y="8" width="3" height="7"/><path d="M8.5 5v3M8.5 15v3"/><rect x="14" y="6" width="3" height="6"/><path d="M15.5 3v3M15.5 12v4"/></symbol>
     <symbol id="i-brief" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></symbol>
     <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 4v4M9 13h.01M15 13h.01M9 17h6M2 13v3M22 13v3"/></symbol>
@@ -504,6 +514,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       <button class="nav" data-view="risk"><svg><use href="#i-shield"/></svg>Risk Center</button>
       <button class="nav" data-view="analytics"><svg><use href="#i-perf"/></svg>Strategy Analytics</button>
       <button class="nav" data-view="market"><svg><use href="#i-candle"/></svg>Market Watch</button>
+      <button class="nav" data-view="live"><svg><use href="#i-live"/></svg>Live Chart</button>
       <button class="nav" data-view="session"><svg><use href="#i-clock"/></svg>Trading Session</button>
       <button class="nav" data-view="fx"><svg><use href="#i-coin"/></svg>Kurs USD</button>
       <button class="nav" data-view="diag"><svg><use href="#i-pulse"/></svg>Broker Diagnostics</button>
@@ -1085,6 +1096,36 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   // only for their one timeframe, which then is the only choice that has values.
   const MW_TFS = [['M1', 'M1'], ['M5', 'M5'], ['M15', 'M15'], ['M30', 'M30'], ['H1', 'H1'], ['H4', 'H4'], ['D1', 'D1'], ['W1', 'W1'], ['MN1', 'MN']];
   S.mwTf = pref.get('mwTf');
+  // ---------- Live Chart (TradingView widgets) ----------
+  // The charts are TradingView's own feed, not the broker's: MT5's price is shown next to each for comparison.
+  // Widgets are iframes, so the page is built once and only rebuilt when a source, the layout or the theme changes.
+  const LIVE = [
+    { k: 'xau', name: 'XAUUSD', mt5: /^XAUUSD/i, src: [['OANDA:XAUUSD', 'OANDA'], ['FOREXCOM:XAUUSD', 'FOREX.com'], ['FX_IDC:XAUUSD', 'FX IDC'], ['TVC:GOLD', 'TVC Gold']] },
+    { k: 'btc', name: 'BTCUSD', mt5: /^BTCUSD/i, src: [['BITSTAMP:BTCUSD', 'Bitstamp'], ['COINBASE:BTCUSD', 'Coinbase'], ['BINANCE:BTCUSDT', 'Binance (USDT)'], ['CRYPTO:BTCUSD', 'Crypto index']] },
+  ];
+  const liveLayout = () => pref.get('liveLayout') === '1' ? '1' : '2';
+  const liveSrc = c => { const v = pref.get('liveSrc.' + c.k); return c.src.some(x => x[0] === v) ? v : c.src[0][0]; };
+  const liveMt5 = c => (tel()?.symbols || []).find(x => c.mt5.test(x.symbol));
+  const livePx = c => { const m = liveMt5(c); return m ? `MT5 ${esc(m.symbol)}: <b class="num">${fmtPx(m.bid, m.digits ?? 2)}</b>` : 'MT5: simbol tidak ada di Market Watch'; };
+  function liveView() {
+    return `<div class="grid ${liveLayout() === '2' ? 'g-2' : ''}">${LIVE.map(c => `<section class="card tvcard"><div class="ph"><h2>${c.name}</h2>
+      <span class="px" data-livepx="${c.k}">${livePx(c)}</span>
+      <select data-livesrc="${c.k}" aria-label="Sumber harga ${c.name}">${c.src.map(([v, l]) => `<option value="${v}" ${v === liveSrc(c) ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div class="tvbox" id="tv-${c.k}"></div></section>`).join('')}</div>
+      <p class="tvnote">Chart dan harga dari TradingView, bisa sedikit berbeda dari harga broker di MT5. Timeframe, indikator, dan simbol lain bisa diubah langsung di toolbar chart.</p>`;
+  }
+  function mountLive() {
+    LIVE.forEach(c => {
+      const box = $('tv-' + c.k); if (!box) return;
+      const wrap = document.createElement('div'); wrap.className = 'tradingview-widget-container';
+      const inner = document.createElement('div'); inner.className = 'tradingview-widget-container__widget';
+      const sc = document.createElement('script'); sc.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'; sc.async = true;
+      sc.textContent = JSON.stringify({ autosize: true, symbol: liveSrc(c), interval: '15', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Etc/UTC',
+        theme: theme(), style: '1', locale: 'id', allow_symbol_change: true, calendar: false, support_host: 'https://www.tradingview.com' });
+      wrap.append(inner, sc); box.replaceChildren(wrap);
+    });
+  }
+
   function marketCard() {
     const syms = (tel()?.symbols || []).map(s => {
       const tf = S.mwTf || tel().timeframe, v = s.tf ? s.tf[tf] : tf === tel().timeframe ? s : null;
@@ -1435,6 +1476,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     basket: ['Basket Monitor', 'Posisi terbuka dikelompokkan per Magic Number dan simbol.'],
     risk: ['Risk Center', 'Proteksi rugi harian, margin, dan eksposur.'],
     analytics: ['Strategy Analytics', 'Perbandingan EA dan perkembangan equity.'],
+    live: ['Live Chart', 'Chart live XAUUSD dan BTCUSD dari TradingView.'],
     session: ['Trading Session', 'Pantau sesi pasar, waktu trading, dan performa berdasarkan sesi.'],
     market: ['Market Watch', 'Harga, struktur pasar, RSI/ATR, dan sinyal untuk simbol di Market Watch terminal.'],
     fx: ['Kurs USD', 'Harga 1 USD dalam rupiah secara realtime, dan posisi akun dalam USD dan IDR.'],
@@ -1451,10 +1493,11 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       <select id="sessDays" aria-label="Periode">${[7, 30, 90].map(d => `<option value="${d}" ${d === S.sessDays ? 'selected' : ''}>${d} hari terakhir</option>`).join('')}</select>
       <select id="sessSym" aria-label="Simbol"><option value="ALL">Semua Symbol</option>${symOpts.map(x => `<option ${x === S.sessSym ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
       <button class="btn primary" data-act="sessrefresh">${icon('i-sync')}Refresh</button></div>` : '';
-    return S.view === 'overview' ? '' : `<div class="phead"><div><h1>${h}</h1><p>${p}</p></div>${acts}${sessActs}</div>`;
+    const liveActs = S.view === 'live' ? `<div class="acts"><div class="seg livelay" role="group" aria-label="Tata letak">${[['2', '2 kolom'], ['1', '1 kolom']].map(([k, l]) => `<button data-livelayout="${k}" class="${liveLayout() === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>` : '';
+    return S.view === 'overview' ? '' : `<div class="phead"><div><h1>${h}</h1><p>${p}</p></div>${acts}${sessActs}${liveActs}</div>`;
   }
   function viewBody() {
-    if (!tel() && !['users', 'settings', 'fx', 'session'].includes(S.view)) return emptyState();
+    if (!tel() && !['users', 'settings', 'fx', 'session', 'live'].includes(S.view)) return emptyState();
     switch (S.view) {
       case 'overview': return filterBar() + kpiRow()
         + `<div class="grid g-ov1">${equityCard()}${dailyCard()}${symPerfCard()}</div>`
@@ -1467,6 +1510,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       case 'risk': return riskCard() + `<div class="grid g-2">${riskSettings()}${protControl()}</div>` + exposureCard();
       case 'analytics': return filterBar() + kpiRow() + `<div class="grid g-2">${equityCard()}${dailyCard()}</div>` + perfSummary() + `<div class="grid g-2">${symPerfCard()}${allocCard()}</div>`;
       case 'market': return marketCard();
+      case 'live': return liveView();
       case 'session': return sessionView();
       case 'fx': return fxView();
       case 'diag': return diagCard();
@@ -1475,9 +1519,15 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     }
   }
   function render() {
+    // the Live Chart iframes would reload on every rebuild: keep the page and refresh only MT5's prices
+    if (S.view === 'live' && $('main').dataset.v === 'live' && !S.liveDirty) {
+      renderChrome(); LIVE.forEach(c => { const el = document.querySelector(`[data-livepx="${c.k}"]`); if (el) el.innerHTML = livePx(c); }); return;
+    }
     renderChrome();
     $('main').innerHTML = head() + viewBody() + `<div class="foot">AlgoDesk · MT5 Agent ${esc(tel()?.agent_version || '–')} · waktu trade dalam jam server broker</div>`;
     $('modal').innerHTML = detailModal();
+    $('main').dataset.v = S.view; S.liveDirty = false;
+    if (S.view === 'live') mountLive();
   }
   function safeRender() {
     // keep half-typed form values and open pickers: skip auto-refresh while the user is in a field
@@ -1581,7 +1631,9 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
         if (S.view === 'session') await loadSess(); } catch (err) { toast(err.message, 'err'); }
       render(); return;
     }
-    if (e.target.closest('#themeBtn')) { const t = theme() === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; pref.set('theme', t); showTheme(); return; }
+    if (e.target.closest('#themeBtn')) { const t = theme() === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; pref.set('theme', t); showTheme(); if (S.view === 'live') { S.liveDirty = true; render(); } return; }
+    const ll = e.target.closest('[data-livelayout]');
+    if (ll) { pref.set('liveLayout', ll.dataset.livelayout); S.liveDirty = true; render(); return; }
     if (e.target.closest('#symPickBtn')) { S.symPick = !S.symPick; renderChrome(); return; }
     if (e.target.closest('[data-symreset]')) { try { localStorage.removeItem('algodesk.sideSyms'); } catch {} renderChrome(); return; }
     const ub = e.target.closest('#userBtn'), menu = $('userMenu');
@@ -1654,6 +1706,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     }
     if (id === 'curSel') { S.cur = el.value; pref.set('cur', S.cur); }
     else if (id === 'fSym') S.sym = el.value;
+    else if (el.dataset.livesrc) { pref.set('liveSrc.' + el.dataset.livesrc, el.value); S.liveDirty = true; }
     else if (id === 'fBkt') S.basketSym = el.value;
     else if (id === 'riskMode') S.riskMode = el.value;
     else if (id === 'sessTz') { S.sessTz = el.value; pref.set('sessTz', el.value); }
