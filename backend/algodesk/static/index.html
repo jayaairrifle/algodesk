@@ -415,6 +415,113 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   .tb-brand small { max-width: 200px; }
   .fbar .live { margin-left: 0; }
 }
+/* ---------- responsive: tablet rail, small laptop, phone ---------- */
+.m-only, .tabbar, .top > .m-only, .tb-brand small.m-only { display: none; }
+@media (min-width: 1025px) and (max-width: 1279px) {
+  .shell { grid-template-columns: 208px minmax(0, 1fr); }
+  .nav { font-size: 13.5px; padding: 9px 10px; gap: 10px; }
+}
+@media (min-width: 600px) and (max-width: 1024px) {
+  .shell { grid-template-columns: 88px minmax(0, 1fr); }
+  .side { flex-direction: column; border-right: 1px solid var(--line); border-bottom: 0; overflow: visible; padding: 12px 8px; }
+  .navgroup { flex-direction: column; gap: 4px; }
+  .nav { flex-direction: column; gap: 4px; width: 100%; padding: 8px 2px; font-size: 10.5px; line-height: 1.2; text-align: center; white-space: normal; justify-content: center; min-height: 56px; }
+  .nav svg { width: 21px; height: 21px; }
+  .nav .ct { display: none; }
+  .symbox, .ver { display: none; }
+  .top .tb-time { display: none; }
+}
+@media (max-width: 599px) {
+  .m-only { display: block; }
+  .d-only, .side, .fbar, #tbSyms { display: none !important; }
+  .shell { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  main { padding: 12px 14px calc(88px + env(safe-area-inset-bottom)); gap: 12px; }
+  .top { flex-wrap: nowrap; min-height: 60px; }
+  .top > div { border-bottom: 0; padding: 8px 10px; }
+  .top .tb-conn, .top .tb-acct, .top .tb-time { display: none; }
+  .top > div { border-right: 0; }
+  .top > .tb-cur { display: flex; padding: 0 4px; }
+  #userBtn > svg { display: none; }
+  .tb-cur select { height: 40px; padding: 0 8px; font-weight: 600; }
+  .tb-brand .logo { height: 24px; } .tb-brand .logo i { width: 6px; }
+  .tb-brand b { font-size: 14px; letter-spacing: .02em; }
+  #tbMStat { color: var(--fg-2); font-size: 12px; display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  .tabbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    background: var(--panel); border-top: 1px solid var(--line); padding: 4px 4px calc(6px + env(safe-area-inset-bottom)); }
+  .tabbar button { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    background: none; border: 0; color: var(--fg-2); font: inherit; font-size: 11px; cursor: pointer; }
+  .tabbar button svg { width: 22px; height: 22px; }
+  .tabbar button.on { color: var(--accent); font-weight: 600; }
+  .phead h1 { font-size: 20px; }
+  .phead p { font-size: 12.5px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ph { padding: 12px 14px; }
+}
+/* phone-only blocks */
+.mhero { background: var(--accent); color: #fff; border-radius: 18px; padding: 16px; }
+.mhero .mh-top { display: flex; justify-content: space-between; font-size: 12.5px; color: rgba(255,255,255,.85); }
+.mhero .mh-val { font-family: var(--mono); font-size: 28px; font-weight: 600; margin-top: 6px; word-break: break-all; }
+.mhero .mh-val small { font-size: 13px; margin-left: 6px; }
+.mhero .mh-sub { font-size: 12.5px; color: rgba(255,255,255,.85); margin-top: 2px; }
+.mhero .mh-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; border-top: 1px solid rgba(255,255,255,.25); margin-top: 12px; padding-top: 12px; }
+.mhero .mh-grid small { display: block; font-size: 11.5px; color: rgba(255,255,255,.8); }
+.mhero .mh-grid b { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+.mper { display: flex; flex-direction: column; gap: 8px; }
+.mper .row { display: flex; gap: 6px; }
+.mper .row > * { flex: 1; min-width: 0; }
+.mper button { height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--fg-2); font: inherit; font-size: 13px; cursor: pointer; }
+.mper button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.mper select, .mper input { height: 40px; }
+.mper .rf { flex: 0 0 48px; display: flex; align-items: center; justify-content: center; }
+.mper .rf svg { width: 18px; height: 18px; }
+#tbMStat { min-width: 0; }
+#tbMStat .tx { overflow: hidden; text-overflow: ellipsis; }
+.mrisk .rw.hd { color: var(--fg); font-size: 13.5px; }
+.pcards > .empty { padding: 18px 4px; }
+.pcards .more { align-self: center; }
+.mrisk { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.mrisk .rw { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--fg-2); }
+.mrisk .rw b { color: var(--fg); font-size: 13.5px; }
+.pcards { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; }
+.pcard { border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--panel-2); }
+.pcard .hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pcard .hd b { font-size: 15px; }
+.pcard .meta { font-size: 12px; color: var(--fg-2); }
+.pcard .g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-size: 11.5px; color: var(--fg-2); }
+.pcard .g3 b { display: block; font-family: var(--mono); font-size: 13px; color: var(--fg); font-weight: 600; }
+.pcard .pl { background: var(--panel); border-radius: 10px; padding: 8px 10px; }
+.pcard .pl b { font-size: 14px; }
+.pcard .ft { display: flex; justify-content: space-between; font-size: 12px; color: var(--fg-2); }
+.ptotal { border: 1px solid var(--accent); border-radius: 14px; padding: 12px; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.ptotal .big { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+.ptotal .sm { text-align: right; font-size: 12px; color: var(--fg-2); line-height: 1.5; }
+.mgauge { display: flex; flex-direction: column; align-items: center; padding: 14px 14px 0; }
+.mgauge svg { width: 200px; height: 112px; }
+.mgauge .gv { margin-top: -58px; text-align: center; }
+.mgauge .gv b { font-family: var(--mono); font-size: 26px; }
+.mgauge .gv small { display: block; color: var(--fg-2); font-size: 12px; }
+.mseg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mseg button { height: 44px; border: 0; background: var(--panel); color: var(--fg-2); font: inherit; font-size: 14px; cursor: pointer; }
+.mseg button.on { background: var(--accent); color: #fff; font-weight: 600; }
+.moregrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.moregrid button { min-height: 88px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font: inherit; font-size: 12.5px; text-align: center; cursor: pointer; padding: 8px 4px; }
+.moregrid button svg { width: 24px; height: 24px; color: var(--accent); }
+.mrows { display: flex; flex-direction: column; }
+.mrows > div, .mrows > button { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 56px; padding: 0 14px; border-top: 1px solid var(--line-soft); background: none; border-left: 0; border-right: 0; border-bottom: 0; color: var(--fg); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.mrows > :first-child { border-top: 0; }
+.mcur { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.mcur button { height: 36px; min-width: 52px; border: 0; background: none; color: var(--fg-2); font: inherit; font-size: 12.5px; cursor: pointer; }
+.mcur button.on { background: var(--accent); color: #fff; font-weight: 600; }
+.mcur button:disabled { opacity: .4; cursor: not-allowed; }
+@media (max-width: 399px) {
+  .kpi .val { font-size: 17px; }
+  .kpi .sub { flex-wrap: wrap; gap: 4px 10px; }
+  .mhero .mh-val { font-size: 24px; }
+}
+@media (max-width: 599px) {
+  .tvcard:not(.sel) { display: none; }
+  .tvbox { height: 360px; }
+}
 @media (max-width: 520px) {
   .kpi { min-height: 0; padding: 12px; }
   .kpi .val { font-size: 20px; }
@@ -487,7 +594,8 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
 <div id="appView" hidden>
 <header class="top">
   <div class="tb-brand"><span class="logo"><i style="height:12px"></i><i style="height:20px"></i><i style="height:28px"></i></span>
-    <div><b>ALGODESK TRADING JOURNAL</b><small id="tbSyms">–</small></div></div>
+    <div><b>ALGODESK<span class="d-only"> TRADING JOURNAL</span></b><small id="tbSyms">–</small><small id="tbMStat" class="m-only"></small></div></div>
+  <div class="tb-cur m-only" id="tbCurM"></div>
   <div class="tb-conn" id="tbConn"></div>
   <div class="tb-acct" id="tbAcct"></div>
   <div class="tb-time"><span id="tbDate"></span><b id="tbClock" class="mono"></b></div>
@@ -526,6 +634,13 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   </aside>
   <main id="main"></main>
 </div>
+<nav class="tabbar" aria-label="Navigasi utama">
+  <button data-view="overview"><svg><use href="#i-home"/></svg>Overview</button>
+  <button data-view="positions"><svg><use href="#i-brief"/></svg>Posisi</button>
+  <button data-view="live"><svg><use href="#i-live"/></svg>Chart</button>
+  <button data-view="risk"><svg><use href="#i-shield"/></svg>Risk</button>
+  <button data-view="more"><svg><use href="#i-grid"/></svg>Menu</button>
+</nav>
 </div>
 <div id="modal"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
@@ -764,7 +879,13 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       return `<div class="symrow">${coinHtml(s.symbol)}<div><b>${esc(s.symbol)}</b><span class="num">${fmtPx(s.bid, s.digits)}</span><span class="num ${cls(ch)}" style="font-size:12.5px">${ch == null ? '' : pct(ch)}</span></div>${spark(h, ch < 0 ? 'var(--down)' : 'var(--up)', 64, 30, false)}</div>`;
     }).join('') || '<span class="muted">–</span>';
     document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.view === S.view));
+    // phone top bar and bottom tabs
+    $('tbMStat').innerHTML = `<span class="dot ${conn ? 'g' : online ? 'y' : 'r'}"></span><span class="tx">${conn ? 'Live · ' + esc(a?.server || '') : online ? 'MT5 terputus' : 'Agent offline'}</span>`;
+    $('tbCurM').innerHTML = a ? `<select id="curSelM" aria-label="Mata uang tampilan">${CURS.map(c => `<option value="${c}" ${c === viewCur() ? 'selected' : ''} ${usdPer(c) && usdPer(acctCur()) ? '' : 'disabled'}>${c}</option>`).join('')}</select>` : '';
+    const tab = PHONE_TABS.includes(S.view) ? S.view : 'more';
+    document.querySelectorAll('.tabbar button').forEach(b => { const on = b.dataset.view === tab; b.classList.toggle('on', on); on ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'); });
   }
+  const PHONE_TABS = ['overview', 'positions', 'live', 'risk'];
   function sideSyms() { try { const v = JSON.parse(pref.get('sideSyms')); return Array.isArray(v) ? v : null; } catch { return null; } }
   function tickClock() {
     const d = new Date(), off = -d.getTimezoneOffset() / 60;
@@ -773,8 +894,9 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   }
 
   // ---------- overview widgets ----------
+  const ovSyms = () => [...new Set([...S.trades.map(t => t.symbol), ...(tel()?.positions || []).map(p => p.symbol)])].sort();
   function filterBar() {
-    const syms = [...new Set([...S.trades.map(t => t.symbol), ...(tel()?.positions || []).map(p => p.symbol)])].sort();
+    const syms = ovSyms();
     const now = tel()?.server_time;
     return `<section class="card fbar">
       <label class="f"><span>Symbol</span><select id="fSym">${['ALL', ...syms].map(s => `<option value="${s}" ${s === S.sym ? 'selected' : ''}>${s === 'ALL' ? 'ALL' + (syms.length ? ' (' + syms.join(', ') + ')' : '') : esc(s)}</option>`).join('')}</select></label>
@@ -784,6 +906,42 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       <button class="btn primary" data-act="refresh">${icon('i-sync')}Refresh</button>
       <span class="live"><span class="dot ${S.st?.agent?.online ? 'g' : 'r'}"></span><b class="${S.st?.agent?.online ? '' : 'down'}">${S.st?.agent?.online ? 'Live Update' : 'Agent offline'}</b>Last update: <span class="mono" id="lastUpd">${S.lastUpdate ? new Date(S.lastUpdate).toLocaleTimeString('id-ID') : '–'}</span></span>
     </section>`;
+  }
+  // ---------- phone-only blocks (shown under 600px, see .m-only) ----------
+  function mobileHero() {
+    const r = riskCalc(), a = r.a, cur = viewCur(), floating = sum(r.t.positions || [], x => x.profit);
+    const alt = PL_CURS.filter(c => c !== cur).map(c => [fmtIn(a.equity, c), c]).filter(x => x[0] !== '–');
+    const ml = a.margin_level;
+    return `<div class="m-only"><section class="mhero"><div class="mh-top"><span>Equity (${cur})</span><span>Login ${esc(a.login ?? '–')}</span></div>
+      <div class="mh-val">${fmtNum(a.equity)}<small>${cur}</small></div>
+      ${alt.length ? `<div class="mh-sub">≈ ${alt.map(([v, c]) => v + ' ' + c).join(' · ')}</div>` : ''}
+      <div class="mh-grid"><div><small>Balance</small><b>${fmtNum(a.balance)}</b></div><div><small>P/L hari ini</small><b>${fmtNum(r.daily, true)}</b></div>
+        <div><small>Floating</small><b>${fmtNum(floating, true)}</b></div><div><small>Margin Level</small><b>${ml ? ml.toFixed(2) + '%' : a.margin === 0 ? 'Tanpa margin' : '–'}</b></div></div></section></div>`;
+  }
+  function mobilePeriod() {
+    const syms = ovSyms();
+    return `<div class="m-only"><div class="mper"><div class="row" role="group" aria-label="Periode">${Object.entries(PERIODS).map(([d, l]) => `<button type="button" data-mdays="${d}" class="${String(S.days) === d ? 'on' : ''}" aria-pressed="${String(S.days) === d}">${l}</button>`).join('')}</div>
+      ${isCustom() ? `<div class="row"><input type="date" id="fFromM" class="mono" value="${S.cFrom}" max="${S.cTo}" aria-label="Dari tanggal"><input type="date" id="fToM" class="mono" value="${S.cTo}" min="${S.cFrom}" max="${srvToday()}" aria-label="Sampai tanggal"></div>` : ''}
+      <div class="row"><select id="fSymM" aria-label="Simbol">${['ALL', ...syms].map(x => `<option value="${x}" ${x === S.sym ? 'selected' : ''}>${x === 'ALL' ? 'Semua simbol' : esc(x)}</option>`).join('')}</select>
+        <button type="button" class="rf" data-act="refresh" aria-label="Refresh">${icon('i-sync')}</button></div></div></div>`;
+  }
+  const riskLimitTxt = p => p.enabled === false ? 'Proteksi mati' : p.limit_pct == null ? 'Limit –' : 'Limit ' + p.limit_pct.toFixed(2) + '%';
+  const riskRows = r => `<div class="rw"><span>${r.used > 0 ? `Turun <b class="num down">${r.used.toFixed(2)}%</b> dari baseline` : r.daily > 0 && r.p.baseline ? `Equity ${pct(r.daily / r.p.baseline * 100)} di atas baseline` : 'Belum turun dari baseline'}</span>
+    <span>Sisa <b class="num">${r.remain == null ? '–' : fmtNum(r.remain)}</b></span></div>`;
+  const riskBar = r => `<div class="bar ${!r.lim ? '' : r.fill >= 100 ? 'crit' : r.fill >= 66 ? 'warn' : ''}" role="progressbar" aria-label="Pemakaian batas rugi harian" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${r.fill.toFixed(0)}"><i style="width:${r.fill.toFixed(1)}%"></i></div>`;
+  function mobileRisk() {
+    const r = riskCalc();
+    return `<div class="m-only"><section class="card mrisk"><div class="rw hd"><b>Batas rugi harian</b><span class="muted">${riskLimitTxt(r.p)}</span></div>
+      ${riskBar(r)}${riskRows(r)}</section></div>`;
+  }
+  function mobileGauge() {
+    const r = riskCalc(), th = r.fill / 100 * Math.PI, x = 95 - 80 * Math.cos(th), y = 100 - 80 * Math.sin(th);
+    const col = !r.lim ? 'var(--fg-2)' : r.fill >= 100 ? 'var(--down)' : r.fill >= 66 ? 'var(--warn)' : 'var(--accent)';
+    return `<div class="m-only"><section class="card"><div class="mgauge">
+      <svg viewBox="0 0 190 108" role="img" aria-label="Pemakaian batas rugi harian ${r.fill.toFixed(0)}%"><path d="M15 100 A80 80 0 0 1 175 100" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
+        ${r.fill > 0 ? `<path d="M15 100 A80 80 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round"/>` : ''}</svg>
+      <div class="gv"><b>${r.lim ? r.fill.toFixed(0) + '%' : '–'}</b><small>${r.lim ? 'dari batas rugi harian' : 'proteksi mati'}</small></div></div>
+      <div class="mrisk"><div class="rw hd"><b>Batas rugi harian</b><span class="muted">${riskLimitTxt(r.p)}</span></div>${riskRows(r)}</div></section></div>`;
   }
   function kpiRow() {
     const k = tradeKpis(ovTrades());
@@ -880,9 +1038,21 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
         ${compact ? '' : `<td class="r num">${p.sl ? fmtPx(p.sl, d) : '–'}</td><td class="r num">${p.tp ? fmtPx(p.tp, d) : '–'}</td>`}
         ${compact ? `<td class="r num ${cls(p.profit)}">${fmtNum(p.profit, true)}</td>` : plCells(p.profit)}<td class="r num ${cls(move)}">${pct(move)}</td>
         <td class="num">${dur(now - p.time)}</td><td class="num" title="${esc(eaLabel(p.magic))}">${p.magic || 'Manual'}</td><td><span class="bkt">${basketId(p.magic, p.symbol)}</span></td></tr>`; }).join('');
+    const card = p => { const s = sym(p.symbol), d = p.digits ?? 2, cur = s ? (p.side === 'BUY' ? s.bid : s.ask) : null;
+      const move = cur && p.price_open ? (p.side === 'BUY' ? 1 : -1) * (cur - p.price_open) / p.price_open * 100 : null;
+      return `<div class="pcard"><div class="hd"><div><b>${esc(p.symbol)}</b> <span class="side-b ${p.side === 'BUY' ? 'buy' : 'sell'}">${p.side}</span></div><span class="num ${cls(move)}">${pct(move)}</span></div>
+        <div class="meta">${dur(now - p.time)} · Magic ${p.magic || 'Manual'} · ${esc(eaLabel(p.magic))}</div>
+        <div class="g3"><div>Lot<b>${Number(p.volume).toFixed(2)}</b></div><div>Open<b>${fmtPx(p.price_open, d)}</b></div><div>Current<b>${fmtPx(cur, d)}</b></div></div>
+        <div class="g3 pl">${PL_CURS.map(c => `<div>P/L ${c}<b class="${cls(p.profit)}">${fmtIn(p.profit, c, true)}</b></div>`).join('')}</div>
+        <div class="ft"><span>SL <b class="num">${p.sl ? fmtPx(p.sl, d) : '–'}</b> · TP <b class="num">${p.tp ? fmtPx(p.tp, d) : '–'}</b></span><span class="bkt">${basketId(p.magic, p.symbol)}</span></div></div>`; };
+    const totPl = sum(ps, p => p.profit), shown = compact ? ps.slice(0, 3) : ps;
+    const cards = `<div class="m-only"><div class="pcards">${shown.map(card).join('') || '<div class="empty">Tidak ada posisi terbuka.</div>'}
+      ${compact && ps.length > 3 ? `<button class="btn sm outline more" data-go="positions">Lihat semua ${ps.length} posisi</button>` : ''}
+      ${ps.length ? `<div class="ptotal"><div><small class="muted">Total ${ps.length} posisi · ${sum(ps, p => p.volume).toFixed(2)} lot</small><div class="big ${cls(totPl)}">${fmtNum(totPl, true)} <small>${viewCur()}</small></div></div>
+        <div class="sm">${PL_CURS.filter(c => c !== viewCur()).map(c => fmtIn(totPl, c, true) + ' ' + c).join('<br>')}<br><b class="num ${cls(totPl)}">${pct(balPct(totPl))}</b> dari balance</div></div>` : ''}</div></div>`;
     return `<section class="card"><div class="ph"><h2>Open Positions (${ps.length}) <span class="chip g"><span class="dot g"></span>Real-Time</span></h2>
       ${compact ? `<button class="btn icon outline" data-go="positions" aria-label="Buka semua posisi">${icon('i-expand')}</button>` : ''}</div>
-      <div class="tw"><table><thead><tr><th>#</th><th>Symbol</th><th>Type</th><th class="r">Volume</th><th class="r">Open Price</th><th class="r">Current Price</th>
+      ${cards}<div class="tw d-only"><table><thead><tr><th>#</th><th>Symbol</th><th>Type</th><th class="r">Volume</th><th class="r">Open Price</th><th class="r">Current Price</th>
       ${compact ? `<th class="r">P/L (${viewCur()})</th>` : `<th class="r">SL</th><th class="r">TP</th>${PL_CURS.map(c => `<th class="r">P/L (${c})</th>`).join('')}`}<th class="r">P/L (%)</th><th>Duration</th><th>Magic</th><th>Basket</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="15" class="empty">Tidak ada posisi terbuka.</td></tr>`}</tbody>
       ${ps.length ? (() => { const pl = sum(ps, p => p.profit);
@@ -924,22 +1094,26 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       <th class="r">P/L (${viewCur()})</th><th class="r">Comm</th><th class="r">Swap</th><th class="r">Net P/L</th><th>Magic</th><th>Basket</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="13" class="empty">Belum ada trade tertutup${S.deals.length || S.trades.length ? '' : '. Riwayat terisi setelah agent 0.13 menyinkronkan deal'}.</td></tr>`}</tbody></table></div></section>`;
   }
-  function riskCard() {
+  // What the agent enforces: equity against the daily baseline (start-of-day equity, or the equity at the
+  // last "Buka blokir"). Floating loss already open at the baseline is in the baseline, so it is not counted again.
+  function riskCalc() {
     const t = tel(), a = t.account, p = t.protection || {}, pl = t.pl;
-    // What the agent enforces: equity against the daily baseline (start-of-day equity, or the equity at the
-    // last "Buka blokir"). Floating loss already open at the baseline is in the baseline, so it is not counted again.
     const daily = p.baseline ? a.equity - p.baseline : pl ? pl.realized + pl.floating : null;
     const used = p.baseline ? Math.max(0, p.baseline - a.equity) / p.baseline * 100 : 0;
     const lim = p.enabled === false ? null : p.limit_pct || null, fill = lim ? Math.min(100, used / lim * 100) : 0;
     const remain = p.limit_amount ? Math.max(0, p.limit_amount - Math.max(0, p.baseline - a.equity)) : null;
+    return { t, a, p, pl, daily, used, lim, fill, remain };
+  }
+  function riskCard(dOnly) {
+    const { t, a, p, pl, daily, used, lim, fill, remain } = riskCalc();
     const exposure = sum(t.positions || [], x => x.volume), floating = sum(t.positions || [], x => x.profit);
     const ml = a.margin_level, mlState = !ml ? (a.margin === 0 ? ['Tanpa margin', 'g'] : ['–', '']) : ml < (a.margin_call || 100) * 1.5 ? ['Danger', 'r'] : ml < 300 ? ['Watch', 'y'] : ['Safe', 'g'];
-    return `<section class="card"><div class="ph"><h2>Risk Center</h2><span class="muted" style="font-size:12.5px">Daily Baseline (${p.day_start ? srvDay(p.day_start) : '–'})</span>
+    return `<section class="card${dOnly ? ' d-only' : ''}"><div class="ph"><h2>Risk Center</h2><span class="muted" style="font-size:12.5px">Daily Baseline (${p.day_start ? srvDay(p.day_start) : '–'})</span>
       <span class="chip ${p.entry_state === 'blocked' ? 'r' : ['paused', 'session'].includes(p.entry_state) ? 'y' : 'g'}">${{ blocked: 'Blocked', paused: 'Paused', session: 'Di luar sesi' }[p.entry_state] || 'Valid'}</span></div>
       <div class="rgrid"><div><small>Baseline Equity</small><b>${fmtNum(p.baseline)}</b></div><div><small>Current Equity</small><b>${fmtNum(a.equity)}</b></div>
         <div><small>Daily P/L (vs baseline)</small><b class="${cls(daily)}">${fmtNum(daily, true)}</b> <span class="num ${cls(daily)}" style="font-size:12px">(${p.baseline ? pct(daily / p.baseline * 100) : '–'})</span>
           ${pl ? `<small class="num" style="margin-top:2px">Realized hari ini ${fmtNum(pl.realized, true)} · Floating ${fmtNum(pl.floating, true)}</small>` : ''}</div></div>
-      <div style="padding:0 16px 12px"><div class="bar ${!lim ? '' : fill >= 100 ? 'crit' : fill >= 66 ? 'warn' : ''}" role="progressbar" aria-label="Pemakaian batas rugi harian" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${fill.toFixed(0)}"><i style="width:${fill.toFixed(1)}%"></i></div>
+      <div style="padding:0 16px 12px">${riskBar({ lim, fill })}
         <div class="prow" style="margin-top:6px"><span>Daily Drawdown <b class="num ${used > 0 ? 'down' : ''}">${used.toFixed(2)}%</b>${lim ? ` · ${fill.toFixed(0)}% dari batas` : ''}${used === 0 && daily > 0 ? ` <span class="muted">(equity ${pct(daily / p.baseline * 100)} di atas baseline)</span>` : ''}</span>
           <span>Limit: ${p.enabled === false ? 'proteksi mati' : p.limit_pct == null ? '–' : p.limit_pct.toFixed(2) + '% (' + fmtNum(p.limit_amount) + ')'}</span></div></div>
       <div class="rmini"><div><small>Margin Level</small><b class="${mlState[1] === 'g' ? 'up' : mlState[1] === 'r' ? 'down' : 'warn'}">${ml ? ml.toFixed(2) + '%' : a.margin === 0 ? '' : '–'}</b> <span class="chip ${mlState[1]}" style="font-size:11px;padding:1px 6px">${mlState[0]}</span></div>
@@ -1107,8 +1281,10 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
   const liveSrc = c => { const v = pref.get('liveSrc.' + c.k); return c.src.some(x => x[0] === v) ? v : c.src[0][0]; };
   const liveMt5 = c => (tel()?.symbols || []).find(x => c.mt5.test(x.symbol));
   const livePx = c => { const m = liveMt5(c); return m ? `MT5 ${esc(m.symbol)}: <b class="num">${fmtPx(m.bid, m.digits ?? 2)}</b>` : 'MT5: simbol tidak ada di Market Watch'; };
+  const liveSel = () => pref.get('liveSel') === 'btc' ? 'btc' : 'xau';
   function liveView() {
-    return `<div class="grid ${liveLayout() === '2' ? 'g-2' : ''}">${LIVE.map(c => `<section class="card tvcard"><div class="ph"><h2>${c.name}</h2>
+    return `<div class="m-only"><div class="mseg" role="group" aria-label="Pilih chart">${LIVE.map(c => `<button type="button" data-livesel="${c.k}" class="${liveSel() === c.k ? 'on' : ''}" aria-pressed="${liveSel() === c.k}">${c.name}</button>`).join('')}</div></div>
+      <div class="grid ${liveLayout() === '2' ? 'g-2' : ''}">${LIVE.map(c => `<section class="card tvcard ${liveSel() === c.k ? 'sel' : ''}" data-tv="${c.k}"><div class="ph"><h2>${c.name}</h2>
       <span class="px" data-livepx="${c.k}">${livePx(c)}</span>
       <select data-livesrc="${c.k}" aria-label="Sumber harga ${c.name}">${c.src.map(([v, l]) => `<option value="${v}" ${v === liveSrc(c) ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="tvbox" id="tv-${c.k}"></div></section>`).join('')}</div>
@@ -1468,7 +1644,20 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       <span>${(S.st?.agents || []).length ? 'Pasang AlgoDeskAgent di terminal MT5 dengan URL backend, ID agent, dan rahasianya.' : 'Belum ada agent terdaftar. Jalankan <span class="mono">python -m algodesk.cli create-agent vps-01</span> di server.'}</span></div></section>`;
   }
 
+  const MORE = [['history', 'i-list', 'Trade History'], ['eas', 'i-bot', 'EA Expert'], ['basket', 'i-basket', 'Basket Monitor'], ['analytics', 'i-perf', 'Strategy Analytics'],
+    ['market', 'i-candle', 'Market Watch'], ['session', 'i-clock', 'Trading Session'], ['fx', 'i-coin', 'Kurs USD'], ['diag', 'i-pulse', 'Broker Diagnostics'],
+    ['users', 'i-users', 'Pengguna'], ['settings', 'i-gear', 'Settings']];
+  function moreView() {
+    const items = MORE.filter(m => m[0] !== 'users' || S.me?.role === 'admin'), lt = theme() === 'light';
+    return `<div class="moregrid">${items.map(([v, i, l]) => `<button type="button" data-view="${v}">${icon(i)}${l}</button>`).join('')}</div>
+      <section class="card"><div class="mrows">
+        <div><span>Mata uang tampilan</span><div class="mcur" role="group" aria-label="Mata uang tampilan">${CURS.map(c => `<button type="button" data-cur="${c}" class="${c === viewCur() ? 'on' : ''}" aria-pressed="${c === viewCur()}" ${usdPer(c) && usdPer(acctCur()) ? '' : 'disabled'}>${c}</button>`).join('')}</div></div>
+        <div><span>Tema terang</span><button id="themeBtnM" class="tswitch" role="switch" aria-checked="${lt}" aria-label="Tema terang"><span class="knob"></span>${icon('i-moon').replace('<svg>', '<svg class="i-moon">')}${icon('i-sun').replace('<svg>', '<svg class="i-sun">')}</button></div>
+        <div><span>Masuk sebagai</span><span class="muted">${esc(S.me?.display_name || '–')} · ${ROLE_LABEL[S.me?.role] || ''}</span></div>
+        <button type="button" data-act="logout"><span class="down">Keluar</span>${icon('i-arrow')}</button></div></section>`;
+  }
   const HEADS = {
+    more: ['Menu', 'Semua halaman dan pengaturan.'],
     overview: ['Overview', 'Ringkasan performa akun dan EA secara real-time.'],
     positions: ['Open Positions', 'Posisi terbuka per simbol, Magic Number, dan basket.'],
     history: ['Trade History', 'Trade tertutup dari riwayat deal MT5 (jam server broker).'],
@@ -1497,17 +1686,17 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     return S.view === 'overview' ? '' : `<div class="phead"><div><h1>${h}</h1><p>${p}</p></div>${acts}${sessActs}${liveActs}</div>`;
   }
   function viewBody() {
-    if (!tel() && !['users', 'settings', 'fx', 'session', 'live'].includes(S.view)) return emptyState();
+    if (!tel() && !['users', 'settings', 'fx', 'session', 'live', 'more'].includes(S.view)) return emptyState();
     switch (S.view) {
-      case 'overview': return filterBar() + kpiRow()
+      case 'overview': return mobileHero() + mobilePeriod() + filterBar() + kpiRow() + mobileRisk()
         + `<div class="grid g-ov1">${equityCard()}${dailyCard()}${symPerfCard()}</div>`
         + `<div class="grid g-ov2">${positionsTable(true)}${basketCard(false)}</div>`
-        + `<div class="grid g-ov2">${historyTable(S.trades, { limit: 8 })}${riskCard()}</div>`;
+        + `<div class="grid g-ov2">${historyTable(S.trades, { limit: 8 })}${riskCard(true)}</div>`;
       case 'positions': return positionsTable(false) + exposureCard();
       case 'history': return historyTable(S.histTrades, { days: true });
       case 'eas': return strategyCards() + eaCards() + `<div class="grid g-ea2">${perfSummary()}${allocCard()}</div><div class="grid g-ea2">${logsCard()}${resourceCard()}</div>`;
       case 'basket': return basketCard(true);
-      case 'risk': return riskCard() + `<div class="grid g-2">${riskSettings()}${protControl()}</div>` + exposureCard();
+      case 'risk': return mobileGauge() + riskCard() + `<div class="grid g-2">${riskSettings()}${protControl()}</div>` + exposureCard();
       case 'analytics': return filterBar() + kpiRow() + `<div class="grid g-2">${equityCard()}${dailyCard()}</div>` + perfSummary() + `<div class="grid g-2">${symPerfCard()}${allocCard()}</div>`;
       case 'market': return marketCard();
       case 'live': return liveView();
@@ -1516,6 +1705,7 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
       case 'diag': return diagCard();
       case 'users': return usersView();
       case 'settings': return settingsView();
+      case 'more': return moreView();
     }
   }
   function render() {
@@ -1631,7 +1821,19 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
         if (S.view === 'session') await loadSess(); } catch (err) { toast(err.message, 'err'); }
       render(); return;
     }
-    if (e.target.closest('#themeBtn')) { const t = theme() === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; pref.set('theme', t); showTheme(); if (S.view === 'live') { S.liveDirty = true; render(); } return; }
+    if (e.target.closest('#themeBtn, #themeBtnM')) { const t = theme() === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; pref.set('theme', t); showTheme();
+      if (S.view === 'live') S.liveDirty = true; if (S.view === 'live' || S.view === 'more') render(); return; }
+    const ls = e.target.closest('[data-livesel]');
+    if (ls) {  // switch the phone's single chart without rebuilding the widgets
+      pref.set('liveSel', ls.dataset.livesel);
+      document.querySelectorAll('[data-tv]').forEach(c => c.classList.toggle('sel', c.dataset.tv === ls.dataset.livesel));
+      document.querySelectorAll('[data-livesel]').forEach(b => { const on = b === ls; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      return;
+    }
+    const md = e.target.closest('[data-mdays]');
+    if (md) { pickDays(md.dataset.mdays); render(); try { await Promise.all([loadStats(), loadEquity()]); } catch (err) { toast(err.message, 'err'); } render(); return; }
+    const mc = e.target.closest('[data-cur]');
+    if (mc && !mc.disabled) { S.cur = mc.dataset.cur; pref.set('cur', S.cur); render(); return; }
     const ll = e.target.closest('[data-livelayout]');
     if (ll) { pref.set('liveLayout', ll.dataset.livelayout); S.liveDirty = true; render(); return; }
     if (e.target.closest('#symPickBtn')) { S.symPick = !S.symPick; renderChrome(); return; }
@@ -1696,9 +1898,13 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     if (act === 'unblockgo') { S.confirm = false; sendCommand({ type: 'risk_reset' }, 'Buka blokir'); }
     if (act === 'send') { S.confirm = false; const paused = tel()?.protection?.entry_state === 'paused'; sendCommand({ type: paused ? 'resume_entry' : 'pause_entry' }, paused ? 'Lanjutkan entry' : 'Jeda entry'); }
   });
+  function pickDays(v) {
+    S.days = v === 'custom' ? 'custom' : +v;
+    if (isCustom() && !S.cFrom) { S.cTo = srvToday(); S.cFrom = isoDay(dayTs(S.cTo) - 29 * 86400); }
+  }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.detail != null) { S.detail = null; render(); } });
   document.addEventListener('change', async e => {
-    const el = e.target, id = el.id;
+    const el = e.target, id = ({ fFromM: 'fFrom', fToM: 'fTo', fSymM: 'fSym', curSelM: 'curSel' })[el.id] || el.id;  // phone twins of the desktop controls
     if (el.dataset.symtog) {
       const cur = sideSyms() || [...document.querySelectorAll('[data-symtog]:checked')].map(x => x.dataset.symtog).filter(x => x !== el.dataset.symtog);
       const next = el.checked ? [...cur.filter(x => x !== el.dataset.symtog), el.dataset.symtog] : cur.filter(x => x !== el.dataset.symtog);
@@ -1716,10 +1922,8 @@ tfoot td { border-top: 1px solid var(--line); background: var(--panel-2); }
     else if (id === 'lSym') S.logSym = el.value;
     else if (id === 'lEv') S.logEv = el.value;
     else if (id === 'fDays' || id === 'fFrom' || id === 'fTo') {
-      if (id === 'fDays') {
-        S.days = el.value === 'custom' ? 'custom' : +el.value;
-        if (isCustom() && !S.cFrom) { S.cTo = srvToday(); S.cFrom = isoDay(dayTs(S.cTo) - 29 * 86400); }
-      } else {
+      if (id === 'fDays') pickDays(el.value);
+      else {
         if (!/^\d{4}-\d\d-\d\d$/.test(el.value) || +el.value.slice(0, 4) < 2000) return;  // still typing
         let a = id === 'fFrom' ? el.value : S.cFrom, b = id === 'fTo' ? el.value : S.cTo;
         if (b > srvToday()) b = srvToday();
